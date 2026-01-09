@@ -5,7 +5,7 @@ import { TrendingUp, Calendar, DollarSign, Loader2, Clock } from 'lucide-react'
 import { GET_MY_INVESTMENTS } from '@/graphql/queries'
 
 export default function InvestmentsPage() {
-    const { data, loading } = useQuery(GET_MY_INVESTMENTS)
+    const { data, loading } = useQuery<any>(GET_MY_INVESTMENTS)
     const investments = data?.myInvestments || []
 
     const getStatusColor = (status: string) => {

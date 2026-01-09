@@ -79,7 +79,7 @@ export function Sidebar() {
     const router = useRouter()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-    const { data } = useQuery(GET_ME)
+    const { data } = useQuery<any>(GET_ME)
     const userRole = data?.me?.role || 'user'
 
     const handleSignOut = async () => {

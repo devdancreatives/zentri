@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { GET_DASHBOARD_DATA } from '@/graphql/queries'
 
 export default function DashboardPage() {
-    const { data, loading } = useQuery(GET_DASHBOARD_DATA)
+    const { data, loading } = useQuery<any>(GET_DASHBOARD_DATA)
 
     if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-yellow-500" /></div>
 

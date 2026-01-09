@@ -10,7 +10,7 @@ export default function WalletPage() {
     const [copied, setCopied] = useState(false)
 
     // Use Apollo hooks instead of fetch
-    const { data, loading } = useQuery(GET_ME)
+    const { data, loading } = useQuery<any>(GET_ME)
     const [createWallet] = useMutation(CREATE_MY_WALLET, {
         refetchQueries: [{ query: GET_ME }],
         onCompleted: () => {

@@ -5,7 +5,7 @@ import { Clock, CheckCircle, XCircle, Loader2, ExternalLink, TrendingDown } from
 import { GET_MY_DEPOSITS } from '@/graphql/queries'
 
 export default function DepositsPage() {
-    const { data, loading } = useQuery(GET_MY_DEPOSITS)
+    const { data, loading } = useQuery<any>(GET_MY_DEPOSITS)
     const deposits = data?.myDeposits || []
 
     const getStatusIcon = (status: string) => {

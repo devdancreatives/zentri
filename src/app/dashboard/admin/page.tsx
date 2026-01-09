@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Shield } from 'lucide-react'
@@ -12,19 +12,18 @@ export default function AdminPage() {
     const [result, setResult] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
-    const { data, loading: checkingRole } = useQuery(GET_ME, {
-        onCompleted: (data) => {
-            if (data?.me?.role !== 'admin') {
-                router.push('/dashboard')
-            }
-        },
-        onError: () => {
-            router.push('/dashboard')
-        }
-    })
+    const { data, loading: checkingRole, error: roleError } = useQuery<any>(GET_ME)
 
-    const [distributeProfit, { loading }] = useMutation(ADMIN_DISTRIBUTE_PROFIT, {
-        onCompleted: (data) => {
+    useEffect(() => {
+        if (!checkingRole) {
+            if (roleError || data?.me?.role !== "admin") {
+                router.push("/dashboard")
+            }
+        }
+    }, [data, checkingRole, roleError, router])
+
+    const [distributeProfit, { loading }] = useMutation<any>(ADMIN_DISTRIBUTE_PROFIT, {
+        onCompleted: (data: any) => {
             setResult(data.adminDistributeProfit)
             setDistributeAmount('')
             setError(null)

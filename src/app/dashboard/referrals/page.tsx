@@ -9,9 +9,9 @@ export default function ReferralsPage() {
     const [copied, setCopied] = useState(false)
     const [linkCopied, setLinkCopied] = useState(false)
 
-    const { data: statsData, loading: statsLoading } = useQuery(GET_MY_REFERRAL_STATS)
-    const { data: referralsData, loading: referralsLoading } = useQuery(GET_MY_REFERRALS)
-    const { data: earningsData, loading: earningsLoading } = useQuery(GET_MY_REFERRAL_EARNINGS)
+    const { data: statsData, loading: statsLoading } = useQuery<any>(GET_MY_REFERRAL_STATS)
+    const { data: referralsData, loading: referralsLoading } = useQuery<any>(GET_MY_REFERRALS)
+    const { data: earningsData, loading: earningsLoading } = useQuery<any>(GET_MY_REFERRAL_EARNINGS)
 
     const stats = statsData?.myReferralStats
     const referrals = referralsData?.myReferrals || []
@@ -88,7 +88,7 @@ export default function ReferralsPage() {
                             className="py-2 px-4 rounded-lg bg-yellow-500 hover:bg-yellow-400 transition-all text-zinc-900 flex items-center gap-2 font-semibold self-stretch"
                         >
                             {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                            
+
                         </button>
                     </div>
 
@@ -105,7 +105,7 @@ export default function ReferralsPage() {
                             className="py-2 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-all text-white flex items-center gap-2 font-semibold self-stretch border border-zinc-700"
                         >
                             {linkCopied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5" />}
-                           
+
                         </button>
                     </div>
                 </div>

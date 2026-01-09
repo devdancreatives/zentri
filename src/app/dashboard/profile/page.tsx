@@ -6,7 +6,7 @@ import { User as UserIcon, Mail, Loader2, Check } from 'lucide-react'
 import { GET_ME, UPDATE_PROFILE } from '@/graphql/queries'
 
 export default function ProfilePage() {
-    const { data, loading } = useQuery(GET_ME)
+    const { data, loading } = useQuery<any>(GET_ME)
     const [fullName, setFullName] = useState('')
     const [saved, setSaved] = useState(false)
     const [success, setSuccess] = useState(false)
