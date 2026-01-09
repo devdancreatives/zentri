@@ -11,6 +11,21 @@ const yoga = createYoga({
   }),
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
+  cors: {
+    origin: "*", // In production you might want to restrict this
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  },
 });
 
-export { yoga as GET, yoga as POST, yoga as OPTIONS };
+export async function GET(request: Request) {
+  return yoga.handleRequest(request, {});
+}
+
+export async function POST(request: Request) {
+  return yoga.handleRequest(request, {});
+}
+
+export async function OPTIONS(request: Request) {
+  return yoga.handleRequest(request, {});
+}
