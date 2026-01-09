@@ -510,13 +510,36 @@ export const resolvers = {
       const newUser = authData.user;
       if (!newUser) throw new Error("User creation failed");
 
+      // Generate a new unique referral code for this user
+      const newReferralCode = Math.random()
+        .toString(36)
+        .substring(2, 10)
+        .toUpperCase();
+
       await serviceClient.from("users").upsert({
         id: newUser.id,
         email: newUser.email,
         full_name: fullName,
         role: "user",
-        referral_code: referralCode, // Handle referral code on signup
+        referral_code: newReferralCode,
       });
+
+      // If a referral code was provided (upline), record the referral
+      if (referralCode) {
+        const { data: referrer } = await serviceClient
+          .from("users")
+          .select("id")
+          .eq("referral_code", referralCode.toUpperCase())
+          .single();
+
+        if (referrer) {
+          await serviceClient.from("referrals").insert({
+            referrer_id: referrer.id,
+            referee_id: newUser.id,
+            total_earned: 0,
+          });
+        }
+      }
 
       await serviceClient
         .from("verification_codes")
