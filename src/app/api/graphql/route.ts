@@ -1,6 +1,7 @@
 import { createSchema, createYoga } from "graphql-yoga";
 import { typeDefs } from "@/graphql/schema";
 import { resolvers } from "@/graphql/resolvers";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,21 +12,41 @@ const yoga = createYoga({
   }),
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
-  cors: {
-    origin: "*", // In production you might want to restrict this
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  },
+  cors: false, // Disable Yoga's built-in CORS as we handle it manually
 });
 
+function getCorsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+}
+
 export async function GET(request: Request) {
-  return yoga.handleRequest(request, {});
+  const response = await yoga.handleRequest(request, {});
+  // Add CORS headers to the response
+  Object.entries(getCorsHeaders()).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  return response;
 }
 
 export async function POST(request: Request) {
-  return yoga.handleRequest(request, {});
+  const response = await yoga.handleRequest(request, {});
+  // Add CORS headers to the response
+  Object.entries(getCorsHeaders()).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  return response;
 }
 
 export async function OPTIONS(request: Request) {
-  return yoga.handleRequest(request, {});
+  return NextResponse.json(
+    {},
+    {
+      status: 200,
+      headers: getCorsHeaders(),
+    }
+  );
 }

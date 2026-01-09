@@ -14,7 +14,7 @@ export default function LandingPage() {
                         <span className="flex h-2 w-2 rounded-full bg-yellow-500 mr-2 animate-pulse"></span>
                         Now Accepting New Investors
                     </div>
-                    <h1 className="text-5xl font-bold tracking-tight text-white sm:text-7xl">
+                    <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-7xl">
                         Human Expertise. <br />
                         <span className="text-yellow-500">AI Precision.</span>
                     </h1>
@@ -104,7 +104,7 @@ export default function LandingPage() {
                             <div className="text-5xl font-bold text-zinc-900 mb-2">12k+</div>
                             <div className="text-zinc-800 font-medium">Active Investors</div>
                         </div>
-                        <div className="p-8 border-l border-r border-zinc-900/10">
+                        <div className="p-8 md:border-l md:border-r border-zinc-900/10">
                             <div className="text-5xl font-bold text-white mb-2">$8.5M</div>
                             <div className="text-zinc-800 font-medium">Assets Under Management</div>
                         </div>
