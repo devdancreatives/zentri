@@ -4,7 +4,7 @@ import { resolvers } from "@/graphql/resolvers";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge"; // Switch to Edge Runtime for better standard Web API compliance
+// Reverting to Node.js runtime as Edge caused build errors with Buffer dependency
 
 const yoga = createYoga({
   schema: createSchema({
