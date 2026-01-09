@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useMutation } from '@apollo/client/react'
 import { REQUEST_OTP, REGISTER_WITH_OTP } from '@/graphql/queries'
+import { PublicNavbar } from '@/components/PublicNavbar'
 
 function LoginContent() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -91,162 +92,165 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 backdrop-blur-xl">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-yellow-500" />
-          <h2 className="text-3xl font-bold tracking-tight text-white">Zentrivest</h2>
-          <p className="mt-2 text-sm text-zinc-400">
-            {isSignUp ? (showOtpInput ? 'Verify your email' : 'Create your account') : 'Sign in to your portfolio'}
-          </p>
-        </div>
+    <div className="flex flex-col min-h-screen bg-zinc-950">
+      <PublicNavbar />
+      <div className="flex-1 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 backdrop-blur-xl">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-yellow-500" />
+            <h2 className="text-3xl font-bold tracking-tight text-white">Zentrivest</h2>
+            <p className="mt-2 text-sm text-zinc-400">
+              {isSignUp ? (showOtpInput ? 'Verify your email' : 'Create your account') : 'Sign in to your portfolio'}
+            </p>
+          </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4 rounded-md shadow-sm">
-            {isSignUp && !showOtpInput && (
-              <>
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4 rounded-md shadow-sm">
+              {isSignUp && !showOtpInput && (
+                <>
+                  <div>
+                    <label htmlFor="fullName" className="sr-only">Full Name</label>
+                    <input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      required
+                      className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
+                      placeholder="Full Name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="referralCode" className="sr-only">Referral Code (Optional)</label>
+                    <input
+                      id="referralCode"
+                      name="referralCode"
+                      type="text"
+                      className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
+                      placeholder="Referral Code (Optional)"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    />
+                  </div>
+                </>
+              )}
+
+              {!showOtpInput && (
+                <>
+                  <div>
+                    <label htmlFor="email-address" className="sr-only">Email address</label>
+                    <input
+                      id="email-address"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
+                      placeholder="Email address"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="password" className="sr-only">Password</label>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                      required
+                      className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+
+              {showOtpInput && (
                 <div>
-                  <label htmlFor="fullName" className="sr-only">Full Name</label>
+                  <label htmlFor="otp" className="sr-only">Verification Code</label>
                   <input
-                    id="fullName"
-                    name="fullName"
+                    id="otp"
+                    name="otp"
                     type="text"
                     required
-                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
-                    placeholder="Full Name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-center text-2xl font-bold tracking-widest text-yellow-500 placeholder-zinc-600 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                    placeholder="000000"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
                   />
+                  <div className="flex flex-col items-center mt-2 space-y-2">
+                    <p className="text-xs text-zinc-500">
+                      We sent a code to {email}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await requestOtp({ variables: { email, fullName } })
+                        } catch {
+                          // Error handled by mutation onError
+                        }
+                      }}
+                      className="text-xs text-yellow-500 hover:text-yellow-400 underline"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="referralCode" className="sr-only">Referral Code (Optional)</label>
-                  <input
-                    id="referralCode"
-                    name="referralCode"
-                    type="text"
-                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
-                    placeholder="Referral Code (Optional)"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                  />
-                </div>
-              </>
-            )}
+              )}
+            </div>
 
-            {!showOtpInput && (
-              <>
-                <div>
-                  <label htmlFor="email-address" className="sr-only">Email address</label>
-                  <input
-                    id="email-address"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
-                    placeholder="Email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="password" className="sr-only">Password</label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete={isSignUp ? "new-password" : "current-password"}
-                    required
-                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            {showOtpInput && (
-              <div>
-                <label htmlFor="otp" className="sr-only">Verification Code</label>
-                <input
-                  id="otp"
-                  name="otp"
-                  type="text"
-                  required
-                  className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-center text-2xl font-bold tracking-widest text-yellow-500 placeholder-zinc-600 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                  placeholder="000000"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
-                <div className="flex flex-col items-center mt-2 space-y-2">
-                  <p className="text-xs text-zinc-500">
-                    We sent a code to {email}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await requestOtp({ variables: { email, fullName } })
-                      } catch {
-                        // Error handled by mutation onError
-                      }
-                    }}
-                    className="text-xs text-yellow-500 hover:text-yellow-400 underline"
-                  >
-                    Resend Code
-                  </button>
-                </div>
+            {error && (
+              <div className="text-center text-sm text-red-500">
+                {error}
               </div>
             )}
-          </div>
 
-          {error && (
-            <div className="text-center text-sm text-red-500">
-              {error}
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative flex w-full justify-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Processing...' : (
+                  isSignUp
+                    ? (showOtpInput ? 'Verify & Create Account' : 'Send Verification Code')
+                    : 'Sign in'
+                )}
+              </button>
             </div>
-          )}
+          </form>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative flex w-full justify-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : (
-                isSignUp
-                  ? (showOtpInput ? 'Verify & Create Account' : 'Send Verification Code')
-                  : 'Sign in'
-              )}
-            </button>
+          <div className="text-center">
+            {!showOtpInput && (
+              <button
+                onClick={() => {
+                  setIsSignUp(!isSignUp)
+                  setError(null)
+                  setFullName('')
+                  setReferralCode('')
+                  setEmail('')
+                  setPassword('')
+                }}
+                className="text-sm font-medium text-yellow-500 hover:text-yellow-400"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
+            )}
+            {showOtpInput && (
+              <button
+                onClick={() => setShowOtpInput(false)}
+                className="text-sm font-medium text-zinc-500 hover:text-zinc-400"
+              >
+                Back to details
+              </button>
+            )}
           </div>
-        </form>
-
-        <div className="text-center">
-          {!showOtpInput && (
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp)
-                setError(null)
-                setFullName('')
-                setReferralCode('')
-                setEmail('')
-                setPassword('')
-              }}
-              className="text-sm font-medium text-yellow-500 hover:text-yellow-400"
-            >
-              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
-          )}
-          {showOtpInput && (
-            <button
-              onClick={() => setShowOtpInput(false)}
-              className="text-sm font-medium text-zinc-500 hover:text-zinc-400"
-            >
-              Back to details
-            </button>
-          )}
         </div>
       </div>
     </div>

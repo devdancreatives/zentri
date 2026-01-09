@@ -45,26 +45,21 @@ const getAvailableBalance = async (client: any, userId: string) => {
   const totalDeposited =
     deposits?.reduce((a: number, b: any) => a + b.amount, 0) || 0;
 
-  // Sum active investments
+  // Sum investments (Amount for ACTIVE only, Fee for ALL)
   const { data: investments } = await client
     .from("investments")
-    .select("amount")
-    .eq("user_id", userId)
-    .in("status", ["active", "completed"]);
-  // Should we deduct completed? If completed, principal is returned?
-  // PRD says: funds locked... cannot be withdrawn.
-  // Logic: Balance = (Deposits + Profits) - (Investments)
-  // If investment completes, does it go back to balance? Yes.
-  // We need to track checks.
-  // Simplified logic:
-  // Transaction ledger is best source of truth if we maintained it properly.
-  // For now: Sum(Deposits) - Sum(Active Investments).
-  // Assuming 'completed' investments return principal to balance effectively (or stay in 'investments' table but marked completed).
+    .select("amount, fee, status")
+    .eq("user_id", userId);
 
-  const activeInvestments =
-    investments?.reduce((a: number, b: any) => a + b.amount, 0) || 0;
+  const activeInvestmentsAmount =
+    investments
+      ?.filter((i: any) => i.status === "active")
+      .reduce((a: number, b: any) => a + b.amount, 0) || 0;
 
-  // Also profits?
+  const totalInvestmentFees =
+    investments?.reduce((a: number, b: any) => a + (b.fee || 0), 0) || 0;
+
+  // Sum profits
   const { data: roi } = await client
     .from("roi_snapshots")
     .select("profit_amount")
@@ -72,9 +67,7 @@ const getAvailableBalance = async (client: any, userId: string) => {
   const totalProfit =
     roi?.reduce((a: number, b: any) => a + b.profit_amount, 0) || 0;
 
-  // Sum pending or processed withdrawals (including fees)
-  // We exclude 'rejected' withdrawals as they return funds to balance (or never leave).
-  // Statuses: 'pending', 'processing', 'completed', 'rejected'.
+  // Sum pending or processed withdrawals
   const { data: withdrawals } = await client
     .from("withdrawal_requests")
     .select("amount, fee")
@@ -87,7 +80,13 @@ const getAvailableBalance = async (client: any, userId: string) => {
       0
     ) || 0;
 
-  return totalDeposited + totalProfit - activeInvestments - totalWithdrawals;
+  return (
+    totalDeposited +
+    totalProfit -
+    activeInvestmentsAmount -
+    totalInvestmentFees -
+    totalWithdrawals
+  );
 };
 
 export const resolvers = {
@@ -336,8 +335,16 @@ export const resolvers = {
       const user = await getUser(client);
       if (!user) throw new Error("Unauthorized");
 
+      // Calculate 0.1% Fee
+      const FEE_PERCENTAGE = 0.001; // 0.1%
+      const fee = amount * FEE_PERCENTAGE;
+      const totalDeduction = amount + fee;
+
       const balance = await getAvailableBalance(client, user.id);
-      if (balance < amount) throw new Error("Insufficient balance");
+      if (balance < totalDeduction)
+        throw new Error(
+          `Insufficient balance including ${fee.toFixed(2)} USDT fee (0.1%)`
+        );
 
       const startDate = new Date();
       const endDate = new Date(startDate);
@@ -348,6 +355,7 @@ export const resolvers = {
         .insert({
           user_id: user.id,
           amount,
+          fee: fee, // Record the fee
           duration_months: durationMonths,
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),

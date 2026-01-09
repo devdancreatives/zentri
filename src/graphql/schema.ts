@@ -87,6 +87,7 @@ export const typeDefs = `
   type WithdrawalRequest {
     id: ID!
     amount: Float!
+    fee: Float
     walletAddress: String!
     status: String!
     txHash: String

@@ -40,6 +40,16 @@ export default function InvestPage() {
         }
     }
 
+    // Calculations for Summary
+    const parsedAmount = parseFloat(amount) || 0
+    const fee = parsedAmount * 0.001 // 0.1%
+    const totalDeduction = parsedAmount + fee
+    const durationNum = parseInt(duration)
+    const estimatedProfit = parsedAmount * 0.07 * durationNum // 7% per month * duration
+    const totalReturn = parsedAmount + estimatedProfit
+    const maturityDate = new Date()
+    maturityDate.setMonth(maturityDate.getMonth() + durationNum)
+
     return (
         <div className="max-w-2xl mx-auto space-y-6">
             <h1 className="text-2xl font-bold text-white">New Investment</h1>
@@ -107,9 +117,40 @@ export default function InvestPage() {
             </div>
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 text-sm text-zinc-400">
-                <p>
-                    Funds will be locked for the selected duration. ROI is distributed weekly based on trading performance.
-                </p>
+                <h3 className="font-semibold text-white mb-3">Investment Summary</h3>
+                <div className="space-y-2">
+                    <div className="flex justify-between">
+                        <span>Capital Amount:</span>
+                        <span className="text-white">{parsedAmount > 0 ? `$${parsedAmount.toFixed(2)}` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-500">
+                        <span>Service Fee (0.1%):</span>
+                        <span>{parsedAmount > 0 ? `$${fee.toFixed(2)}` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between font-medium text-white border-t border-zinc-800 pt-2">
+                        <span>Total Deduction:</span>
+                        <span className="text-yellow-500">{parsedAmount > 0 ? `$${totalDeduction.toFixed(2)}` : '-'}</span>
+                    </div>
+
+                    <div className="py-2"></div>
+
+                    <div className="flex justify-between text-green-500">
+                        <span>Est. ROI (7%):</span>
+                        <span>{parsedAmount > 0 ? `+$${estimatedProfit.toFixed(2)}` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-500">
+                        <span>Maturity Date:</span>
+                        <span>{maturityDate.toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-white border-t border-zinc-800 pt-2 mt-2">
+                        <span>Est. Total Return:</span>
+                        <span>{parsedAmount > 0 ? `$${totalReturn.toFixed(2)}` : '-'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="text-xs text-zinc-500 text-center">
+                Funds will be locked for {duration} months. Principal + 7% Profit is returned upon maturity.
             </div>
         </div>
     )

@@ -42,14 +42,6 @@ export default function WalletPage() {
         }
     }
 
-    if (loading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
-            </div>
-        )
-    }
-
     const [showWithdrawModal, setShowWithdrawModal] = useState(false)
     const [withdrawAmount, setWithdrawAmount] = useState('')
     const [withdrawAddress, setWithdrawAddress] = useState('')
@@ -68,6 +60,14 @@ export default function WalletPage() {
             setWithdrawError(error.message)
         }
     })
+
+    if (loading) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+            </div>
+        )
+    }
 
     const handleWithdraw = async (e: React.FormEvent) => {
         e.preventDefault()
