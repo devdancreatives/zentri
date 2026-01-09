@@ -7,6 +7,8 @@ export const typeDefs = `
     fullName: String
     role: String
     balance: Float
+    referralCode: String
+    referralEarnings: Float
     wallet: Wallet
     investments: [Investment]
     deposits: [Deposit]
@@ -51,12 +53,57 @@ export const typeDefs = `
     createdAt: DateTime!
   }
 
+  type ReferralStats {
+    referralCode: String
+    totalReferrals: Int!
+    totalEarned: Float!
+    activeReferrals: Int!
+    canWithdraw: Boolean!
+    nextBonus: ReferralBonus
+  }
+
+  type Referral {
+    id: ID!
+    referee: User!
+    totalEarned: Float!
+    createdAt: DateTime!
+  }
+
+  type ReferralEarning {
+    id: ID!
+    amount: Float!
+    investmentAmount: Float
+    referredUser: User
+    investment: Investment!
+    createdAt: DateTime!
+  }
+
+  type ReferralBonus {
+    milestone: Int!
+    bonus: Float!
+    label: String!
+  }
+
+  type WithdrawalRequest {
+    id: ID!
+    amount: Float!
+    walletAddress: String!
+    status: String!
+    txHash: String
+    createdAt: DateTime!
+    processedAt: DateTime
+  }
+
   type Query {
     me: User
     myInvestments: [Investment]
     myDeposits: [Deposit]
     myROI: [ROISnapshot]
     myTransactions(limit: Int, offset: Int): [Transaction]
+    myReferralStats: ReferralStats
+    myReferrals: [Referral]
+    myReferralEarnings: [ReferralEarning]
+    myWithdrawals: [WithdrawalRequest]
   }
 
   type Mutation {
@@ -65,7 +112,8 @@ export const typeDefs = `
     createMyWallet: Wallet
     adminDistributeProfit(amount: Float!): String
     requestOtp(email: String!, fullName: String!): Boolean
-    registerWithOtp(email: String!, otp: String!, password: String!, fullName: String!): User
+    registerWithOtp(email: String!, otp: String!, password: String!, fullName: String!, referralCode: String): User
     updateProfile(fullName: String): User
+    requestWithdrawal(amount: Float!, walletAddress: String!): WithdrawalRequest
   }
 `;

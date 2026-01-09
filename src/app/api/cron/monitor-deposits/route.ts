@@ -11,8 +11,10 @@ export const runtime = "nodejs";
  * Usage:
  * - Vercel Cron: Runs automatically based on vercel.json schedule
  * - Manual: GET /api/cron/monitor-deposits?secret=YOUR_CRON_SECRET
+ * - cron-job.org: GET request with secret parameter
  */
-export async function GET(request: NextRequest) {
+
+async function handleMonitoring(request: NextRequest) {
   try {
     // Verify cron secret
     const authHeader = request.headers.get("authorization");
@@ -65,4 +67,12 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return handleMonitoring(request);
+}
+
+export async function POST(request: NextRequest) {
+  return handleMonitoring(request);
 }

@@ -1,73 +1,35 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useState } from 'react'
+import { useQuery, useMutation } from '@apollo/client/react'
 import { Wallet as WalletIcon, Copy, Check, Plus, Loader2, ExternalLink } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { GET_ME, CREATE_MY_WALLET } from '@/graphql/queries'
 
 export default function WalletPage() {
-    const { session } = useAuth()
-    const [loading, setLoading] = useState(true)
     const [creating, setCreating] = useState(false)
-    const [wallet, setWallet] = useState<any>(null)
     const [copied, setCopied] = useState(false)
 
-    useEffect(() => {
-        const fetchWallet = async () => {
-            if (!session?.access_token) return
-
-            const res = await fetchGraphQL(session.access_token, `
-                query {
-                    me {
-                        id
-                        wallet {
-                            address
-                            pathIndex
-                        }
-                    }
-                }
-            `)
-
-            setWallet(res?.data?.me?.wallet)
-            setLoading(false)
+    // Use Apollo hooks instead of fetch
+    const { data, loading } = useQuery(GET_ME)
+    const [createWallet] = useMutation(CREATE_MY_WALLET, {
+        refetchQueries: [{ query: GET_ME }],
+        onCompleted: () => {
+            setCreating(false)
+        },
+        onError: (error) => {
+            console.error('Error creating wallet:', error)
+            setCreating(false)
         }
+    })
 
-        fetchWallet()
-    }, [session])
+    const wallet = data?.me?.wallet
 
     const handleCreateWallet = async () => {
-        if (!session?.access_token) return
-
         setCreating(true)
         try {
-            const res = await fetchGraphQL(session.access_token, `
-                mutation {
-                    createMyWallet {
-                        address
-                        pathIndex
-                    }
-                }
-            `)
-
-            if (res.errors) {
-                throw new Error(res.errors[0].message)
-            }
-
-            setWallet(res.data.createMyWallet)
-        } catch (err: any) {
-            alert('Error creating wallet: ' + err.message)
-        } finally {
+            await createWallet()
+        } catch (error) {
+            console.error('Failed to create wallet:', error)
             setCreating(false)
         }
     }
@@ -89,36 +51,36 @@ export default function WalletPage() {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-linear-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
                     <WalletIcon className="h-6 w-6 text-yellow-500" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Wallet</h1>
-                    <p className="text-sm text-zinc-400">Manage your USDT wallet address</p>
+                    <h1 className="text-2xl font-bold text-white">My Wallet</h1>
+                    <p className="text-sm text-zinc-400">Manage your USDT deposits</p>
                 </div>
             </div>
 
             {!wallet ? (
                 <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-12 text-center backdrop-blur-sm">
                     <div className="max-w-md mx-auto">
-                        <div className="p-4 rounded-full bg-yellow-500/10 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                            <WalletIcon className="h-10 w-10 text-yellow-500" />
+                        <div className="p-4 rounded-full bg-zinc-800/50 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                            <WalletIcon className="h-10 w-10 text-zinc-500" />
                         </div>
                         <h2 className="text-xl font-semibold text-white mb-2">No Wallet Yet</h2>
                         <p className="text-zinc-400 mb-6">
-                            Create a wallet to receive deposits and manage your investments
+                            Create a wallet to start depositing USDT and making investments
                         </p>
                         <button
                             onClick={handleCreateWallet}
                             disabled={creating}
-                            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-linear-to-r from-yellow-500 to-yellow-600 text-zinc-900 font-semibold hover:from-yellow-400 hover:to-yellow-500 disabled:opacity-50 transition-all shadow-lg shadow-yellow-500/20 mx-auto"
+                            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-linear-to-r from-yellow-500 to-yellow-600 text-black font-semibold hover:from-yellow-600 hover:to-yellow-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {creating ? (
                                 <>
                                     <Loader2 className="h-5 w-5 animate-spin" />
-                                    Creating...
+                                    Creating Wallet...
                                 </>
                             ) : (
                                 <>
@@ -199,29 +161,16 @@ export default function WalletPage() {
                     </div>
 
                     <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm">
-                        <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <a
-                                href={`https://tronscan.org/#/address/${wallet.address}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/30 border border-zinc-700 hover:border-yellow-500/50 hover:bg-zinc-800/50 transition-all group"
-                            >
-                                <span className="text-white font-medium">View on TronScan</span>
-                                <ExternalLink className="h-4 w-4 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
-                            </a>
-                            <button
-                                onClick={handleCopy}
-                                className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/30 border border-zinc-700 hover:border-yellow-500/50 hover:bg-zinc-800/50 transition-all group"
-                            >
-                                <span className="text-white font-medium">Copy Address</span>
-                                {copied ? (
-                                    <Check className="h-4 w-4 text-green-500" />
-                                ) : (
-                                    <Copy className="h-4 w-4 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
-                                )}
-                            </button>
-                        </div>
+                        <h3 className="text-sm font-semibold text-white mb-4">View on Blockchain</h3>
+                        <a
+                            href={`https://tronscan.org/#/address/${wallet.address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-yellow-500 hover:text-yellow-400 transition-colors"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            View on TronScan
+                        </a>
                     </div>
                 </div>
             )}

@@ -1,78 +1,44 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useState } from 'react'
+import { useQuery, useMutation } from '@apollo/client/react'
 import { User as UserIcon, Mail, Loader2, Check } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { GET_ME, UPDATE_PROFILE } from '@/graphql/queries'
 
 export default function ProfilePage() {
-    const { session } = useAuth()
-    const [loading, setLoading] = useState(true)
-    const [saving, setSaving] = useState(false)
-    const [saved, setSaved] = useState(false)
-    const [user, setUser] = useState<any>(null)
+    const { data, loading } = useQuery(GET_ME)
     const [fullName, setFullName] = useState('')
+    const [saved, setSaved] = useState(false)
+    const [success, setSuccess] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            if (!session?.access_token) return
-
-            const res = await fetchGraphQL(session.access_token, `
-                query {
-                    me {
-                        id
-                        email
-                        fullName
-                    }
-                }
-            `)
-
-            const userData = res?.data?.me
-            setUser(userData)
-            setFullName(userData?.fullName || '')
-            setLoading(false)
+    const [updateProfile, { loading: saving }] = useMutation(UPDATE_PROFILE, {
+        onCompleted: () => {
+            setSuccess(true)
+            setTimeout(() => setSuccess(false), 3000)
+        },
+        onError: (error: Error) => {
+            setError(error.message)
         }
+    })
 
-        fetchProfile()
-    }, [session])
+    // Set initial fullName when data loads
+    useState(() => {
+        if (data?.me?.fullName) {
+            setFullName(data.me.fullName)
+        }
+    })
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!session?.access_token) return
-
-        setSaving(true)
         setSaved(false)
 
         try {
-            const res = await fetchGraphQL(session.access_token, `
-                mutation UpdateProfile($fullName: String) {
-                    updateProfile(fullName: $fullName) {
-                        id
-                        fullName
-                    }
-                }
-            `, { fullName })
-
-            if (res.errors) throw new Error(res.errors[0].message)
-
-            setUser({ ...user, fullName })
-            setSaved(true)
-            setTimeout(() => setSaved(false), 3000)
+            await updateProfile({
+                variables: { fullName }
+            })
         } catch (err) {
             console.error(err)
-        } finally {
-            setSaving(false)
         }
     }
 
@@ -83,6 +49,8 @@ export default function ProfilePage() {
             </div>
         )
     }
+
+    const user = data?.me
 
     return (
         <div className="space-y-8">

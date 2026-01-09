@@ -1,92 +1,42 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useQuery } from '@apollo/client/react'
 import { ROIChart } from '@/components/ROIChart'
-import { Wallet, TrendingUp, DollarSign, Activity, ArrowUpRight, ArrowDownLeft, Plus } from 'lucide-react'
+import { Wallet, TrendingUp, DollarSign, Activity, ArrowUpRight, ArrowDownLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-
-// Simple fetch wrapper for GraphQL
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { GET_DASHBOARD_DATA } from '@/graphql/queries'
 
 export default function DashboardPage() {
-    const { session } = useAuth()
-    const [data, setData] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
+    const { data, loading } = useQuery(GET_DASHBOARD_DATA)
 
-    useEffect(() => {
-        if (!session?.access_token) return
+    if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin text-yellow-500" /></div>
 
-        fetchGraphQL(session.access_token, `
-      query {
-        me {
-           id
-           email
-           fullName
-           balance
-           availableBalance
-           wallet {
-             address
-           }
-        }
-        myInvestments {
-           id
-           amount
-           status
-           durationMonths
-        }
-        myROI {
-           date
-           profitAmount
-        }
-        myTransactions(limit: 5) {
-           id
-           type
-           amount
-           description
-           createdAt
-        }
-      }
-    `)
-            .then((res) => {
-                if (res.errors) console.error(res.errors)
-                setData(res.data)
-            })
-            .finally(() => setLoading(false))
-    }, [session])
-
-    if (loading) return <div className="flex items-center justify-center h-full"><div className="h-8 w-8 animate-spin rounded-full border-4 border-yellow-500 border-t-transparent" /></div>
-
-    const user = data?.me
-    const investments = data?.myInvestments || []
-    const activeInvestments = investments.filter((inv: any) => inv.status === 'active')
-    const totalInvested = activeInvestments.reduce((sum: number, inv: any) => sum + inv.amount, 0)
+    const user = data?.me || { balance: 0, availableBalance: 0 }
+    const investments = (data?.myInvestments || []) as Array<{
+        id: string
+        amount: number
+        status: string
+        createdAt: string
+        endDate: string
+    }>
+    const activeInvestments = investments.filter(inv => inv.status === 'active')
+    const totalInvested = activeInvestments.reduce((sum, inv) => sum + inv.amount, 0)
     const balance = user?.balance || 0
-    const roiData = data?.myROI || []
-    const totalProfit = roiData.reduce((sum: number, roi: any) => sum + roi.profitAmount, 0)
-    const transactions = data?.myTransactions || []
-
-    const handleCreateWallet = async () => {
-        if (!session?.access_token) return
-        await fetchGraphQL(session.access_token, `mutation { createMyWallet { address } }`)
-        window.location.reload()
-    }
+    const roiData = (data?.myROI || []) as Array<{ profitAmount: number }>
+    const totalProfit = roiData.reduce((sum, roi) => sum + roi.profitAmount, 0)
+    const transactions = (data?.myTransactions || []) as Array<{
+        id: string
+        type: string
+        amount: number
+        createdAt: string
+    }>
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div>
-                <h1 className="text-3xl font-bold text-white">Welcome back, {user?.fullName?.split(' ')[0] || 'User'}!</h1>
-                <p className="text-zinc-400 mt-1">Here's what's happening with your investments today.</p>
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.fullName || 'User'}</h1>
+                <p className="text-zinc-400">Here&apos;s your investment overview</p>
             </div>
 
             {/* Stats Grid */}
@@ -169,8 +119,8 @@ export default function DashboardPage() {
                                 <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-all">
                                     <div className="flex items-center gap-3">
                                         <div className={`p-2 rounded-lg ${tx.type === 'deposit' ? 'bg-green-500/10' :
-                                                tx.type === 'withdrawal' ? 'bg-red-500/10' :
-                                                    'bg-yellow-500/10'
+                                            tx.type === 'withdrawal' ? 'bg-red-500/10' :
+                                                'bg-yellow-500/10'
                                             }`}>
                                             {tx.type === 'deposit' ? (
                                                 <ArrowDownLeft className="h-4 w-4 text-green-500" />
@@ -198,28 +148,6 @@ export default function DashboardPage() {
                             ))
                         )}
                     </div>
-                </div>
-            </div>
-
-            {/* Wallet Section */}
-            <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm">
-                <h2 className="text-lg font-semibold text-white mb-4">Wallet Information</h2>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-zinc-400 mb-2">Your Wallet Address</p>
-                        <p className="text-white font-mono text-sm">
-                            {user?.wallet?.address || 'No wallet created'}
-                        </p>
-                    </div>
-                    {!user?.wallet && (
-                        <button
-                            onClick={handleCreateWallet}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-linear-to-r from-yellow-500 to-yellow-600 text-zinc-900 font-semibold hover:from-yellow-400 hover:to-yellow-500 transition-all shadow-lg shadow-yellow-500/20"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Create Wallet
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

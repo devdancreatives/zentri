@@ -1,22 +1,60 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { supabase } from '@/lib/supabase'
+import { useMutation } from '@apollo/client/react'
+import { REQUEST_OTP, REGISTER_WITH_OTP } from '@/graphql/queries'
 
-export default function LoginPage() {
+function LoginContent() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [referralCode, setReferralCode] = useState('')
   const [otp, setOtp] = useState('')
   const [showOtpInput, setShowOtpInput] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { signIn } = useAuth()
+
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref) {
+      setReferralCode(ref.toUpperCase())
+      if (!isSignUp) setIsSignUp(true)
+    }
+  }, [searchParams])
+
+  const [requestOtp] = useMutation(REQUEST_OTP, {
+    onCompleted: () => {
+      setShowOtpInput(true)
+      setLoading(false)
+    },
+    onError: (err) => {
+      setError(err.message)
+      setLoading(false)
+    }
+  })
+
+  const [registerWithOtp] = useMutation(REGISTER_WITH_OTP, {
+    onCompleted: async () => {
+      // Registration successful, now auto-login
+      const { error: loginError } = await signIn(email, password)
+      if (loginError) {
+        setError(loginError.message)
+        setLoading(false)
+        return
+      }
+      router.push('/dashboard')
+    },
+    onError: (err) => {
+      setError(err.message)
+      setLoading(false)
+    }
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,10 +65,17 @@ export default function LoginPage() {
       if (isSignUp) {
         if (showOtpInput) {
           // Finalize Registration with OTP and Password
-          await finalizeRegistration()
+          await registerWithOtp({
+            variables: { email, otp, password, fullName, referralCode: referralCode || null }
+          })
         } else {
           // Request OTP
-          await requestOtp()
+          if (!email || !fullName || !password) {
+            throw new Error("Please fill in all fields.")
+          }
+          await requestOtp({
+            variables: { email, fullName }
+          })
         }
       } else {
         // Login Flow
@@ -38,62 +83,11 @@ export default function LoginPage() {
         if (error) throw error
         router.push('/dashboard')
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       if (!isSignUp || !showOtpInput) setLoading(false)
     }
-  }
-
-  const requestOtp = async () => {
-    if (!email || !fullName || !password) {
-      throw new Error("Please fill in all fields.")
-    }
-
-    const res = await fetch('/api/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `
-                mutation RequestOtp($email: String!, $fullName: String!) {
-                    requestOtp(email: $email, fullName: $fullName)
-                }
-            `,
-        variables: { email, fullName }
-      })
-    })
-
-    const json = await res.json()
-    if (json.errors) throw new Error(json.errors[0].message)
-
-    setShowOtpInput(true)
-    setLoading(false) // Allow user to type OTP
-  }
-
-  const finalizeRegistration = async () => {
-    const res = await fetch('/api/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `
-                mutation RegisterWithOtp($email: String!, $otp: String!, $password: String!, $fullName: String!) {
-                    registerWithOtp(email: $email, otp: $otp, password: $password, fullName: $fullName) {
-                        id
-                    }
-                }
-            `,
-        variables: { email, otp, password, fullName }
-      })
-    })
-
-    const json = await res.json()
-    if (json.errors) throw new Error(json.errors[0].message)
-
-    // Registration successful, now auto-login
-    const { error: loginError } = await signIn(email, password)
-    if (loginError) throw loginError
-
-    router.push('/dashboard')
   }
 
   return (
@@ -110,19 +104,33 @@ export default function LoginPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4 rounded-md shadow-sm">
             {isSignUp && !showOtpInput && (
-              <div>
-                <label htmlFor="fullName" className="sr-only">Full Name</label>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  required
-                  className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
-                  placeholder="Full Name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                />
-              </div>
+              <>
+                <div>
+                  <label htmlFor="fullName" className="sr-only">Full Name</label>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    required
+                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
+                    placeholder="Full Name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="referralCode" className="sr-only">Referral Code (Optional)</label>
+                  <input
+                    id="referralCode"
+                    name="referralCode"
+                    type="text"
+                    className="relative block w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none focus:ring-1 focus:ring-yellow-500 sm:text-sm"
+                    placeholder="Referral Code (Optional)"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  />
+                </div>
+              </>
             )}
 
             {!showOtpInput && (
@@ -178,7 +186,13 @@ export default function LoginPage() {
                   </p>
                   <button
                     type="button"
-                    onClick={requestOtp}
+                    onClick={async () => {
+                      try {
+                        await requestOtp({ variables: { email, fullName } })
+                      } catch {
+                        // Error handled by mutation onError
+                      }
+                    }}
                     className="text-xs text-yellow-500 hover:text-yellow-400 underline"
                   >
                     Resend Code
@@ -216,6 +230,7 @@ export default function LoginPage() {
                 setIsSignUp(!isSignUp)
                 setError(null)
                 setFullName('')
+                setReferralCode('')
                 setEmail('')
                 setPassword('')
               }}
@@ -235,5 +250,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+        <svg className="animate-spin h-8 w-8 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

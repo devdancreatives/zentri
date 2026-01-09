@@ -1,20 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useQuery } from '@apollo/client/react'
 import { FileText, ArrowUpRight, ArrowDownLeft, TrendingUp, Loader2 } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { GET_MY_TRANSACTIONS } from '@/graphql/queries'
 
 const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -47,32 +35,10 @@ const getTransactionColor = (type: string) => {
 }
 
 export default function TransactionsPage() {
-    const { session } = useAuth()
-    const [loading, setLoading] = useState(true)
-    const [transactions, setTransactions] = useState<any[]>([])
-
-    useEffect(() => {
-        const fetchTransactions = async () => {
-            if (!session?.access_token) return
-
-            const res = await fetchGraphQL(session.access_token, `
-                query {
-                    myTransactions(limit: 50) {
-                        id
-                        type
-                        amount
-                        description
-                        createdAt
-                    }
-                }
-            `)
-
-            setTransactions(res?.data?.myTransactions || [])
-            setLoading(false)
-        }
-
-        fetchTransactions()
-    }, [session])
+    const { data, loading } = useQuery(GET_MY_TRANSACTIONS, {
+        variables: { limit: 50 }
+    })
+    const transactions = data?.myTransactions || []
 
     if (loading) {
         return (
@@ -102,7 +68,7 @@ export default function TransactionsPage() {
                     </div>
                 ) : (
                     <div className="divide-y divide-zinc-800">
-                        {transactions.map((tx) => (
+                        {transactions.map((tx: { id: string; type: string; amount: number; description?: string; createdAt: string }) => (
                             <div
                                 key={tx.id}
                                 className="p-4 hover:bg-zinc-800/30 transition-all cursor-pointer group"

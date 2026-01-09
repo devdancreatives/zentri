@@ -18,6 +18,17 @@ const getUser = async (client: any) => {
   return user;
 };
 
+const getBonusLabel = (milestone: number): string => {
+  const labels: Record<number, string> = {
+    5: "Bronze",
+    10: "Silver",
+    25: "Gold",
+    50: "Platinum",
+    100: "Diamond",
+  };
+  return labels[milestone] || "Unknown";
+};
+
 const getAvailableBalance = async (client: any, userId: string) => {
   // Sum confirmed deposits
   const { data: deposits } = await client
@@ -75,7 +86,14 @@ export const resolvers = {
     },
     myInvestments: async (_: any, __: any, context: any) => {
       const client = getClient(context);
-      const { data } = await client.from("investments").select("*");
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const { data } = await client
+        .from("investments")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
       return data;
     },
     myDeposits: async (_: any, __: any, context: any) => {
@@ -92,7 +110,14 @@ export const resolvers = {
     },
     myROI: async (_: any, __: any, context: any) => {
       const client = getClient(context);
-      const { data } = await client.from("roi_snapshots").select("*");
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const { data } = await client
+        .from("roi_snapshots")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("date", { ascending: false });
       return data;
     },
     myTransactions: async (
@@ -101,15 +126,141 @@ export const resolvers = {
       context: any
     ) => {
       const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
       const { data } = await client
         .from("transactions")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
       return data;
     },
+    myReferralStats: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // Get profile for referral data
+      const { data: profile } = await client
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile) throw new Error("Profile not found");
+
+      // Get referral count
+      const { count } = await client
+        .from("referrals")
+        .select("*", { count: "exact", head: true })
+        .eq("referrer_id", user.id);
+
+      // Get total earned
+      const { data: referralData } = await client
+        .from("referrals")
+        .select("total_earned")
+        .eq("referrer_id", user.id);
+
+      const totalEarned =
+        referralData?.reduce((sum, r) => sum + (r.total_earned || 0), 0) || 0;
+
+      // Check if can withdraw (minimum $50)
+      const canWithdraw = (profile.referral_earnings || 0) >= 50;
+
+      // Get next bonus
+      const tiers = [5, 10, 25, 50, 100];
+      const nextTier = tiers.find((t) => t > (count || 0));
+      const nextBonus = nextTier
+        ? {
+            milestone: nextTier,
+            bonus: nextTier * 10,
+            label: getBonusLabel(nextTier),
+          }
+        : null;
+
+      let referralCode = profile.referral_code;
+      if (!referralCode) {
+        // Generate a referral code if missing
+        referralCode = Math.random()
+          .toString(36)
+          .substring(2, 10)
+          .toUpperCase();
+        await client
+          .from("users")
+          .update({ referral_code: referralCode })
+          .eq("id", user.id);
+      }
+
+      return {
+        referralCode: referralCode,
+        totalReferrals: count || 0,
+        totalEarned,
+        activeReferrals: count || 0,
+        canWithdraw,
+        nextBonus,
+      };
+    },
+    myReferrals: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const { data } = await client
+        .from("referrals")
+        .select("*, referee:referee_id(*)")
+        .eq("referrer_id", user.id)
+        .order("created_at", { ascending: false });
+
+      return data;
+    },
+    myReferralEarnings: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const { data: referrals } = await client
+        .from("referrals")
+        .select("id")
+        .eq("referrer_id", user.id);
+
+      if (!referrals || referrals.length === 0) return [];
+
+      const referralIds = referrals.map((r) => r.id);
+
+      const { data } = await client
+        .from("referral_earnings")
+        .select(
+          "*, investment:investment_id(*), referredUser:referred_user_id(*)"
+        )
+        .in("referral_id", referralIds)
+        .order("created_at", { ascending: false });
+
+      return data;
+    },
+    myWithdrawals: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const { data } = await client
+        .from("withdrawal_requests")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      return data;
+    },
   },
   User: {
+    fullName: (parent: any) => parent.full_name,
+    referralCode: (parent: any) => parent.referral_code,
+    referralEarnings: (parent: any) => parent.referral_earnings,
+    availableBalance: async (parent: any, _: any, context: any) => {
+      const client = getClient(context);
+      return getAvailableBalance(client, parent.id);
+    },
     wallet: async (parent: any, _: any, context: any) => {
       const client = getClient(context);
       const { data } = await client
@@ -119,13 +270,40 @@ export const resolvers = {
         .single();
       return data;
     },
-    availableBalance: async (parent: any, _: any, context: any) => {
-      const client = getClient(context);
-      return getAvailableBalance(client, parent.id);
-    },
   },
   Wallet: {
     pathIndex: (parent: any) => parent.path_index,
+  },
+  Deposit: {
+    txHash: (parent: any) => parent.tx_hash,
+    createdAt: (parent: any) => parent.created_at,
+    confirmedAt: (parent: any) => parent.confirmed_at,
+  },
+  Investment: {
+    durationMonths: (parent: any) => parent.duration_months,
+    startDate: (parent: any) => parent.start_date,
+    endDate: (parent: any) => parent.end_date,
+  },
+  Transaction: {
+    createdAt: (parent: any) => parent.created_at,
+  },
+  Referral: {
+    totalEarned: (parent: any) => parent.total_earned,
+    createdAt: (parent: any) => parent.created_at,
+  },
+  ReferralEarning: {
+    investmentAmount: (parent: any) => parent.investment?.amount || 0,
+    createdAt: (parent: any) => parent.created_at,
+  },
+  ROISnapshot: {
+    profitAmount: (parent: any) => parent.profit_amount,
+    roiPercentage: (parent: any) => parent.roi_percentage,
+  },
+  WithdrawalRequest: {
+    walletAddress: (parent: any) => parent.wallet_address,
+    txHash: (parent: any) => parent.tx_hash,
+    createdAt: (parent: any) => parent.created_at,
+    processedAt: (parent: any) => parent.processed_at,
   },
   Mutation: {
     createInvestment: async (
@@ -233,8 +411,6 @@ export const resolvers = {
         .single();
       if (profile?.role !== "admin") throw new Error("Admin only");
 
-      // 1. Get all active investments
-      // We need serviceClient to see ALL investments if RLS hides them
       const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -256,7 +432,6 @@ export const resolvers = {
 
       const roiPercentage = (amount / totalCapital) * 100;
 
-      // 2. Distribute
       const snapshots = [];
       for (const inv of investments) {
         const profit = (inv.amount / totalCapital) * amount;
@@ -286,28 +461,25 @@ export const resolvers = {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
-      // Save code
       const { error } = await serviceClient
         .from("verification_codes")
         .insert({ email, code, expires_at: expiresAt });
 
       if (error) throw new Error("Failed to generate OTP");
 
-      // Send Email
       await sendOtpEmail(email, code);
 
       return true;
     },
     registerWithOtp: async (
       _: any,
-      { email, otp, password, fullName }: any
+      { email, otp, password, fullName, referralCode }: any
     ) => {
       const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
-      // Verify OTP
       const { data: codes } = await serviceClient
         .from("verification_codes")
         .select("*")
@@ -320,7 +492,6 @@ export const resolvers = {
       if (!codes || codes.length === 0)
         throw new Error("Invalid or expired OTP");
 
-      // Create User
       const { data: authData, error: authError } =
         await serviceClient.auth.admin.createUser({
           email,
@@ -333,23 +504,14 @@ export const resolvers = {
       const newUser = authData.user;
       if (!newUser) throw new Error("User creation failed");
 
-      // Trigger or Manual Insert?
-      // Assuming we need manual insert if no trigger exists.
-      // We'll check schema.sql in next step, but let's add safe duplication here just in case?
-      // No, duplication causes PK violation if trigger exists.
-      // I'll assume trigger handles it or I'll add `upsert` logic?
-      // Let's rely on standard Supabase pattern: usually a trigger handles `public.users`.
-      // If I haven't implemented a trigger, I MUST do it here.
-      // I haven't seen a trigger file. I will add manual insert to be safe, using `upsert` or `ignore` logic.
-
       await serviceClient.from("users").upsert({
         id: newUser.id,
         email: newUser.email,
         full_name: fullName,
         role: "user",
+        referral_code: referralCode, // Handle referral code on signup
       });
 
-      // Cleanup codes
       await serviceClient
         .from("verification_codes")
         .delete()

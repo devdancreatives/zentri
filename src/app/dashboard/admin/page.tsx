@@ -1,78 +1,53 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useState } from 'react'
+import { useQuery, useMutation } from '@apollo/client/react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Shield } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { GET_ME, ADMIN_DISTRIBUTE_PROFIT } from '@/graphql/queries'
 
 export default function AdminPage() {
-    const { session } = useAuth()
     const router = useRouter()
     const [distributeAmount, setDistributeAmount] = useState('')
-    const [loading, setLoading] = useState(false)
-    const [checkingRole, setCheckingRole] = useState(true)
-    const [isAdmin, setIsAdmin] = useState(false)
     const [result, setResult] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        const checkAdminRole = async () => {
-            if (!session?.access_token) return
-
-            try {
-                const res = await fetchGraphQL(session.access_token, `query { me { role } }`)
-                const role = res?.data?.me?.role
-
-                if (role !== 'admin') {
-                    router.push('/dashboard')
-                } else {
-                    setIsAdmin(true)
-                }
-            } catch (err) {
+    const { data, loading: checkingRole } = useQuery(GET_ME, {
+        onCompleted: (data) => {
+            if (data?.me?.role !== 'admin') {
                 router.push('/dashboard')
-            } finally {
-                setCheckingRole(false)
             }
+        },
+        onError: () => {
+            router.push('/dashboard')
         }
+    })
 
-        checkAdminRole()
-    }, [session, router])
+    const [distributeProfit, { loading }] = useMutation(ADMIN_DISTRIBUTE_PROFIT, {
+        onCompleted: (data) => {
+            setResult(data.adminDistributeProfit)
+            setDistributeAmount('')
+            setError(null)
+        },
+        onError: (err) => {
+            setError(err.message)
+            setResult(null)
+        }
+    })
 
     const handleDistribute = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!session) return
-        setLoading(true)
         setError(null)
         setResult(null)
 
         try {
-            const res = await fetchGraphQL(session.access_token, `
-        mutation Distribute($amount: Float!) {
-          adminDistributeProfit(amount: $amount)
-        }
-      `, {
-                amount: parseFloat(distributeAmount)
+            await distributeProfit({
+                variables: {
+                    amount: parseFloat(distributeAmount)
+                }
             })
-
-            if (res.errors) throw new Error(res.errors[0].message)
-            setResult(res.data.adminDistributeProfit)
-            setDistributeAmount('')
         } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setLoading(false)
+            // Error handled by onError callback
         }
     }
 
@@ -84,6 +59,7 @@ export default function AdminPage() {
         )
     }
 
+    const isAdmin = data?.me?.role === 'admin'
     if (!isAdmin) return null
 
     return (

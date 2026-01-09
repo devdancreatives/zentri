@@ -1,52 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useQuery } from '@apollo/client/react'
 import { Clock, CheckCircle, XCircle, Loader2, ExternalLink, TrendingDown } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ query }),
-    })
-    return res.json()
-}
+import { GET_MY_DEPOSITS } from '@/graphql/queries'
 
 export default function DepositsPage() {
-    const { session } = useAuth()
-    const [loading, setLoading] = useState(true)
-    const [deposits, setDeposits] = useState<any[]>([])
-
-    useEffect(() => {
-        const fetchDeposits = async () => {
-            if (!session?.access_token) return
-
-            const res = await fetchGraphQL(
-                session.access_token,
-                `
-                query {
-                    myDeposits {
-                        id
-                        amount
-                        txHash
-                        status
-                        createdAt
-                        confirmedAt
-                    }
-                }
-            `
-            )
-
-            setDeposits(res?.data?.myDeposits || [])
-            setLoading(false)
-        }
-
-        fetchDeposits()
-    }, [session])
+    const { data, loading } = useQuery(GET_MY_DEPOSITS)
+    const deposits = data?.myDeposits || []
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -108,7 +68,7 @@ export default function DepositsPage() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {deposits.map((deposit) => (
+                    {deposits.map((deposit: any) => (
                         <div
                             key={deposit.id}
                             className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm hover:border-zinc-700 transition-all"

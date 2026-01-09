@@ -1,58 +1,42 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useMutation } from '@apollo/client/react'
 import { Loader2 } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { CREATE_INVESTMENT } from '@/graphql/queries'
 
 export default function InvestPage() {
-    const { session } = useAuth()
     const [amount, setAmount] = useState('')
     const [duration, setDuration] = useState('1')
-    const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
 
+    const [createInvestment, { loading }] = useMutation(CREATE_INVESTMENT, {
+        onCompleted: () => {
+            setSuccess('Investment created successfully!')
+            setAmount('')
+            setError(null)
+        },
+        onError: (err) => {
+            setError(err.message)
+            setSuccess(null)
+        }
+    })
+
     const handleInvest = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!session) return
-        setLoading(true)
         setError(null)
         setSuccess(null)
 
         try {
-            const res = await fetchGraphQL(session.access_token, `
-        mutation CreateInvestment($amount: Float!, $duration: Int!) {
-          createInvestment(amount: $amount, durationMonths: $duration) {
-            id
-            amount
-            status
-            endDate
-          }
-        }
-      `, {
-                amount: parseFloat(amount),
-                duration: parseInt(duration)
+            await createInvestment({
+                variables: {
+                    amount: parseFloat(amount),
+                    durationMonths: parseInt(duration)
+                }
             })
-
-            if (res.errors) throw new Error(res.errors[0].message)
-            setSuccess('Investment created successfully!')
-            setAmount('')
         } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setLoading(false)
+            // Error handled by onError callback
         }
     }
 
@@ -89,8 +73,8 @@ export default function InvestPage() {
                                     type="button"
                                     onClick={() => setDuration(m.toString())}
                                     className={`flex flex-col items-center justify-center rounded-lg border px-2 py-3 text-sm font-medium transition-colors ${duration === m.toString()
-                                            ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500'
-                                            : 'border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                                        ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500'
+                                        : 'border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-white'
                                         }`}
                                 >
                                     <span className="text-lg">{m}</span>

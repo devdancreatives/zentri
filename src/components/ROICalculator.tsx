@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Wallet, ArrowRight, TrendingUp } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 
 export function ROICalculator() {
     const [amount, setAmount] = useState(5000)
@@ -49,8 +49,8 @@ export function ROICalculator() {
                                 key={m}
                                 onClick={() => setDuration(m)}
                                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors border ${duration === m
-                                        ? 'bg-yellow-500 text-zinc-900 border-yellow-500'
-                                        : 'bg-zinc-800 text-zinc-400 border-transparent hover:bg-zinc-700'
+                                    ? 'bg-yellow-500 text-zinc-900 border-yellow-500'
+                                    : 'bg-zinc-800 text-zinc-400 border-transparent hover:bg-zinc-700'
                                     }`}
                             >
                                 {m}M

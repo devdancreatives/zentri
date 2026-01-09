@@ -1,49 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth-context'
+import { useQuery } from '@apollo/client/react'
 import { TrendingUp, Calendar, DollarSign, Loader2, Clock } from 'lucide-react'
-
-const fetchGraphQL = async (token: string, query: string, variables?: any) => {
-    const res = await fetch('/api/graphql', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: token,
-        },
-        body: JSON.stringify({ query, variables }),
-    })
-    return res.json()
-}
+import { GET_MY_INVESTMENTS } from '@/graphql/queries'
 
 export default function InvestmentsPage() {
-    const { session } = useAuth()
-    const [loading, setLoading] = useState(true)
-    const [investments, setInvestments] = useState<any[]>([])
-
-    useEffect(() => {
-        const fetchInvestments = async () => {
-            if (!session?.access_token) return
-
-            const res = await fetchGraphQL(session.access_token, `
-                query {
-                    myInvestments {
-                        id
-                        amount
-                        durationMonths
-                        startDate
-                        endDate
-                        status
-                    }
-                }
-            `)
-
-            setInvestments(res?.data?.myInvestments || [])
-            setLoading(false)
-        }
-
-        fetchInvestments()
-    }, [session])
+    const { data, loading } = useQuery(GET_MY_INVESTMENTS)
+    const investments = data?.myInvestments || []
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -97,7 +60,7 @@ export default function InvestmentsPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2">
-                    {investments.map((investment) => {
+                    {investments.map((investment: any) => {
                         const progress = calculateProgress(investment.startDate, investment.endDate)
 
                         return (
