@@ -117,7 +117,7 @@ export function Sidebar() {
             )}>
                 <SidebarContent
                     navItems={navItems}
-                    pathname={pathname}
+                    pathname={pathname || ''}
                     setMobileMenuOpen={setMobileMenuOpen}
                     handleSignOut={handleSignOut}
                 />

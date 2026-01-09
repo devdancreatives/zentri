@@ -4,7 +4,13 @@ import { sendOtpEmail } from "@/lib/email";
 import { createClient } from "@supabase/supabase-js";
 
 const getClient = (context: any) => {
-  const token = context.request.headers.get("authorization");
+  // Handle both standard Request (App Router) and NextApiRequest (Pages Router)
+  const headers = context.request.headers;
+  const token =
+    typeof headers.get === "function"
+      ? headers.get("authorization")
+      : headers["authorization"];
+
   if (!token) return supabase;
   return createAuthenticatedClient(token);
 };

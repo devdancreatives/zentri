@@ -21,7 +21,7 @@ function LoginContent() {
   const { signIn } = useAuth()
 
   useEffect(() => {
-    const ref = searchParams.get('ref')
+    const ref = searchParams?.get('ref')
     if (ref) {
       setReferralCode(ref.toUpperCase())
       if (!isSignUp) setIsSignUp(true)
