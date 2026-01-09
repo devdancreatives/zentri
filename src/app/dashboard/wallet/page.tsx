@@ -1,0 +1,230 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/auth-context'
+import { Wallet as WalletIcon, Copy, Check, Plus, Loader2, ExternalLink } from 'lucide-react'
+
+const fetchGraphQL = async (token: string, query: string, variables?: any) => {
+    const res = await fetch('/api/graphql', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: token,
+        },
+        body: JSON.stringify({ query, variables }),
+    })
+    return res.json()
+}
+
+export default function WalletPage() {
+    const { session } = useAuth()
+    const [loading, setLoading] = useState(true)
+    const [creating, setCreating] = useState(false)
+    const [wallet, setWallet] = useState<any>(null)
+    const [copied, setCopied] = useState(false)
+
+    useEffect(() => {
+        const fetchWallet = async () => {
+            if (!session?.access_token) return
+
+            const res = await fetchGraphQL(session.access_token, `
+                query {
+                    me {
+                        id
+                        wallet {
+                            address
+                            pathIndex
+                        }
+                    }
+                }
+            `)
+
+            setWallet(res?.data?.me?.wallet)
+            setLoading(false)
+        }
+
+        fetchWallet()
+    }, [session])
+
+    const handleCreateWallet = async () => {
+        if (!session?.access_token) return
+
+        setCreating(true)
+        try {
+            const res = await fetchGraphQL(session.access_token, `
+                mutation {
+                    createMyWallet {
+                        address
+                        pathIndex
+                    }
+                }
+            `)
+
+            if (res.errors) {
+                throw new Error(res.errors[0].message)
+            }
+
+            setWallet(res.data.createMyWallet)
+        } catch (err: any) {
+            alert('Error creating wallet: ' + err.message)
+        } finally {
+            setCreating(false)
+        }
+    }
+
+    const handleCopy = () => {
+        if (wallet?.address) {
+            navigator.clipboard.writeText(wallet.address)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-8">
+            <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-linear-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
+                    <WalletIcon className="h-6 w-6 text-yellow-500" />
+                </div>
+                <div>
+                    <h1 className="text-2xl font-bold text-white">Wallet</h1>
+                    <p className="text-sm text-zinc-400">Manage your USDT wallet address</p>
+                </div>
+            </div>
+
+            {!wallet ? (
+                <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-12 text-center backdrop-blur-sm">
+                    <div className="max-w-md mx-auto">
+                        <div className="p-4 rounded-full bg-yellow-500/10 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                            <WalletIcon className="h-10 w-10 text-yellow-500" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-white mb-2">No Wallet Yet</h2>
+                        <p className="text-zinc-400 mb-6">
+                            Create a wallet to receive deposits and manage your investments
+                        </p>
+                        <button
+                            onClick={handleCreateWallet}
+                            disabled={creating}
+                            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-linear-to-r from-yellow-500 to-yellow-600 text-zinc-900 font-semibold hover:from-yellow-400 hover:to-yellow-500 disabled:opacity-50 transition-all shadow-lg shadow-yellow-500/20 mx-auto"
+                        >
+                            {creating ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    Creating...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus className="h-5 w-5" />
+                                    Create Wallet
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm">
+                        <h2 className="text-lg font-semibold text-white mb-4">Wallet Address</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-zinc-400 mb-2">TRON (TRC20) Address</label>
+                                <div className="flex flex-row items-stretch sm:items-center gap-2">
+                                    <div className="flex-1 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700 font-mono text-sm text-white overflow-hidden">
+                                        {/* Full address on desktop, truncated on mobile */}
+                                        <span className="hidden sm:inline break-all">{wallet.address}</span>
+                                        <span className="sm:hidden">
+                                            {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={handleCopy}
+                                        className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-yellow-500/50 hover:bg-zinc-800 transition-all"
+                                        title="Copy address"
+                                    >
+                                        {copied ? (
+                                            <Check className="h-5 w-5 text-green-500" />
+                                        ) : (
+                                            <Copy className="h-5 w-5 text-zinc-400" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-zinc-800/30 border border-zinc-700">
+                                <div>
+                                    <p className="text-xs text-zinc-500 mb-1">Network</p>
+                                    <p className="text-sm font-semibold text-white">TRON (TRC20)</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-zinc-500 mb-1">Token Symbol</p>
+                                    <p className="text-sm font-semibold text-white">USDT</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-sm text-zinc-400">
+                                <span>Derivation Path Index:</span>
+                                <span className="text-white font-mono">{wallet.pathIndex}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-blue-500/5 to-blue-600/5 border-blue-500/20 p-6 backdrop-blur-sm">
+                        <h3 className="text-sm font-semibold text-blue-400 mb-2">⚠️ Important Information</h3>
+                        <ul className="space-y-2 text-sm text-zinc-300">
+                            <li className="flex items-start gap-2">
+                                <span className="text-blue-400 mt-1">•</span>
+                                <span><strong>Network:</strong> TRON (TRC20) only - DO NOT send tokens from other networks</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-blue-400 mt-1">•</span>
+                                <span><strong>Token:</strong> USDT (Tether) only - sending other tokens may result in loss</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-blue-400 mt-1">•</span>
+                                <span>Deposits are automatically credited to your account after network confirmation</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="text-blue-400 mt-1">•</span>
+                                <span>Minimum deposit: 10 USDT</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm">
+                        <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <a
+                                href={`https://tronscan.org/#/address/${wallet.address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/30 border border-zinc-700 hover:border-yellow-500/50 hover:bg-zinc-800/50 transition-all group"
+                            >
+                                <span className="text-white font-medium">View on TronScan</span>
+                                <ExternalLink className="h-4 w-4 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
+                            </a>
+                            <button
+                                onClick={handleCopy}
+                                className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/30 border border-zinc-700 hover:border-yellow-500/50 hover:bg-zinc-800/50 transition-all group"
+                            >
+                                <span className="text-white font-medium">Copy Address</span>
+                                {copied ? (
+                                    <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                    <Copy className="h-4 w-4 text-zinc-400 group-hover:text-yellow-500 transition-colors" />
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
