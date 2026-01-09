@@ -193,8 +193,8 @@ export default function ReferralsPage() {
                                 {referrals.map((referral: any) => (
                                     <tr key={referral.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                         <td className="py-3 px-4">
-                                            <p className="text-white font-medium">{referral.fullName}</p>
-                                            <p className="text-xs text-zinc-500">{referral.email}</p>
+                                            <p className="text-white font-medium">{referral?.referee?.fullName}</p>
+                                            <p className="text-xs text-zinc-500">{referral?.referee?.email}</p>
                                         </td>
                                         <td className="py-3 px-4">
                                             <div className="flex items-center gap-2 text-sm text-zinc-400">
