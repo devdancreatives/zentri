@@ -1,9 +1,10 @@
 import { createSchema, createYoga } from "graphql-yoga";
 import { typeDefs } from "@/graphql/schema";
 import { resolvers } from "@/graphql/resolvers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const runtime = "edge"; // Switch to Edge Runtime for better standard Web API compliance
 
 const yoga = createYoga({
   schema: createSchema({
@@ -12,41 +13,32 @@ const yoga = createYoga({
   }),
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
-  cors: false, // Disable Yoga's built-in CORS as we handle it manually
+  cors: false,
 });
 
-function getCorsHeaders() {
-  return {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-export async function GET(request: Request) {
+async function handle(request: NextRequest) {
   const response = await yoga.handleRequest(request, {});
-  // Add CORS headers to the response
-  Object.entries(getCorsHeaders()).forEach(([key, value]) => {
+  // Apply CORS headers to every response
+  Object.entries(corsHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
   return response;
 }
 
-export async function POST(request: Request) {
-  const response = await yoga.handleRequest(request, {});
-  // Add CORS headers to the response
-  Object.entries(getCorsHeaders()).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
-  return response;
+export async function GET(request: NextRequest) {
+  return handle(request);
 }
 
-export async function OPTIONS(request: Request) {
-  return NextResponse.json(
-    {},
-    {
-      status: 200,
-      headers: getCorsHeaders(),
-    }
-  );
+export async function POST(request: NextRequest) {
+  return handle(request);
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return NextResponse.json({}, { status: 200, headers: corsHeaders });
 }
