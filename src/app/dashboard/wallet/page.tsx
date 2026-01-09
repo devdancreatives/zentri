@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
 import { Wallet as WalletIcon, Copy, Check, Plus, Loader2, ExternalLink } from 'lucide-react'
-import { GET_ME, CREATE_MY_WALLET } from '@/graphql/queries'
+import { GET_ME, CREATE_MY_WALLET, REQUEST_WITHDRAWAL, GET_MY_WITHDRAWALS } from '@/graphql/queries'
 
 export default function WalletPage() {
     const [creating, setCreating] = useState(false)
@@ -50,16 +50,72 @@ export default function WalletPage() {
         )
     }
 
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+    const [withdrawAmount, setWithdrawAmount] = useState('')
+    const [withdrawAddress, setWithdrawAddress] = useState('')
+    const [withdrawError, setWithdrawError] = useState('')
+
+    const { data: withdrawalData } = useQuery<any>(GET_MY_WITHDRAWALS)
+    const [requestWithdrawal, { loading: withdrawing }] = useMutation(REQUEST_WITHDRAWAL, {
+        refetchQueries: [{ query: GET_ME }, { query: GET_MY_WITHDRAWALS }],
+        onCompleted: () => {
+            setShowWithdrawModal(false)
+            setWithdrawAmount('')
+            setWithdrawAddress('')
+            setWithdrawError('')
+        },
+        onError: (error) => {
+            setWithdrawError(error.message)
+        }
+    })
+
+    const handleWithdraw = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setWithdrawError('')
+
+        const amount = parseFloat(withdrawAmount)
+        if (isNaN(amount) || amount < 10) {
+            setWithdrawError('Minimum withdrawal is 10 USDT')
+            return
+        }
+
+        const tronRegex = /^T[a-zA-Z0-9]{33}$/
+        if (!tronRegex.test(withdrawAddress)) {
+            setWithdrawError("Invalid TRON address. Must start with 'T' and be 34 chars.")
+            return
+        }
+
+        await requestWithdrawal({
+            variables: {
+                amount: amount,
+                walletAddress: withdrawAddress
+            }
+        })
+    }
+
+    const FEE = 3.00
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-linear-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
-                    <WalletIcon className="h-6 w-6 text-yellow-500" />
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-linear-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30">
+                        <WalletIcon className="h-6 w-6 text-yellow-500" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">My Wallet</h1>
+                        <p className="text-sm text-zinc-400">Manage your USDT deposits & withdrawals</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-white">My Wallet</h1>
-                    <p className="text-sm text-zinc-400">Manage your USDT deposits</p>
-                </div>
+                {wallet && (
+                    <button
+                        onClick={() => setShowWithdrawModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-medium transition-colors border border-zinc-700"
+                    >
+                        <ExternalLink className="h-4 w-4" />
+                        Withdraw
+                    </button>
+                )}
             </div>
 
             {!wallet ? (
@@ -100,7 +156,6 @@ export default function WalletPage() {
                                 <label className="block text-sm text-zinc-400 mb-2">TRON (TRC20) Address</label>
                                 <div className="flex flex-row items-stretch sm:items-center gap-2">
                                     <div className="flex-1 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700 font-mono text-sm text-white overflow-hidden">
-                                        {/* Full address on desktop, truncated on mobile */}
                                         <span className="hidden sm:inline break-all">{wallet.address}</span>
                                         <span className="sm:hidden">
                                             {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
@@ -138,24 +193,69 @@ export default function WalletPage() {
                         </div>
                     </div>
 
+                    {/* Withdrawal History */}
+                    <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 overflow-hidden">
+                        <div className="p-6 border-b border-zinc-800">
+                            <h2 className="text-lg font-semibold text-white">Withdrawal History</h2>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-zinc-400 uppercase bg-zinc-900/50">
+                                    <tr>
+                                        <th className="px-6 py-3">Date</th>
+                                        <th className="px-6 py-3">Amount</th>
+                                        <th className="px-6 py-3">Fee</th>
+                                        <th className="px-6 py-3">Status</th>
+                                        <th className="px-6 py-3">Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {withdrawalData?.myWithdrawals?.map((w: any) => (
+                                        <tr key={w.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                            <td className="px-6 py-4 text-zinc-300">
+                                                {new Date(w.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-white font-medium">
+                                                {w.amount.toFixed(2)} USDT
+                                            </td>
+                                            <td className="px-6 py-4 text-zinc-400">
+                                                {w.fee ? w.fee.toFixed(2) : '0.00'} USDT
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${w.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                                                    w.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
+                                                        'bg-yellow-500/10 text-yellow-500'
+                                                    }`}>
+                                                    {w.status.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-zinc-400 font-mono text-xs">
+                                                {w.walletAddress.slice(0, 6)}...{w.walletAddress.slice(-6)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!withdrawalData?.myWithdrawals || withdrawalData.myWithdrawals.length === 0) && (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
+                                                No withdrawal history found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-blue-500/5 to-blue-600/5 border-blue-500/20 p-6 backdrop-blur-sm">
                         <h3 className="text-sm font-semibold text-blue-400 mb-2">⚠️ Important Information</h3>
                         <ul className="space-y-2 text-sm text-zinc-300">
                             <li className="flex items-start gap-2">
                                 <span className="text-blue-400 mt-1">•</span>
-                                <span><strong>Network:</strong> TRON (TRC20) only - DO NOT send tokens from other networks</span>
+                                <span><strong>Withdrawals:</strong> Minimum 10 USDT. A $3.00 fee applies to all withdrawals.</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-blue-400 mt-1">•</span>
-                                <span><strong>Token:</strong> USDT (Tether) only - sending other tokens may result in loss</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-blue-400 mt-1">•</span>
-                                <span>Deposits are automatically credited to your account after network confirmation</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-blue-400 mt-1">•</span>
-                                <span>Minimum deposit: 10 USDT</span>
+                                <span><strong>Network:</strong> TRON (TRC20) only - verify your destination address carefully.</span>
                             </li>
                         </ul>
                     </div>
@@ -171,6 +271,70 @@ export default function WalletPage() {
                             <ExternalLink className="h-4 w-4" />
                             View on TronScan
                         </a>
+                    </div>
+                </div>
+            )}
+
+            {/* Withdrawal Modal */}
+            {showWithdrawModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
+                    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 w-full max-w-md shadow-xl p-6">
+                        <h3 className="text-xl font-bold text-white mb-4">Withdraw Funds</h3>
+                        <form onSubmit={handleWithdraw} className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-zinc-400 mb-2">Amount (USDT)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={withdrawAmount}
+                                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-hidden focus:border-yellow-500 transition-colors"
+                                    placeholder="Min 10.00"
+                                    required
+                                />
+                                {withdrawAmount && !isNaN(parseFloat(withdrawAmount)) && (
+                                    <div className="mt-2 text-xs flex justify-between text-zinc-400">
+                                        <span>Fee: ${FEE.toFixed(2)}</span>
+                                        <span>Total Deduction: ${(parseFloat(withdrawAmount) + FEE).toFixed(2)}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-zinc-400 mb-2">Destination Address (TRC20)</label>
+                                <input
+                                    type="text"
+                                    value={withdrawAddress}
+                                    onChange={(e) => setWithdrawAddress(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-hidden focus:border-yellow-500 transition-colors font-mono"
+                                    placeholder="T..."
+                                    required
+                                />
+                            </div>
+
+                            {withdrawError && (
+                                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                    {withdrawError}
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowWithdrawModal(false)}
+                                    className="flex-1 px-4 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-medium transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={withdrawing}
+                                    className="flex-1 px-4 py-3 rounded-lg bg-linear-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-semibold transition-colors disabled:opacity-50"
+                                >
+                                    {withdrawing ? 'Processing...' : 'Confirm Withdrawal'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -72,7 +72,22 @@ const getAvailableBalance = async (client: any, userId: string) => {
   const totalProfit =
     roi?.reduce((a: number, b: any) => a + b.profit_amount, 0) || 0;
 
-  return totalDeposited + totalProfit - activeInvestments;
+  // Sum pending or processed withdrawals (including fees)
+  // We exclude 'rejected' withdrawals as they return funds to balance (or never leave).
+  // Statuses: 'pending', 'processing', 'completed', 'rejected'.
+  const { data: withdrawals } = await client
+    .from("withdrawal_requests")
+    .select("amount, fee")
+    .eq("user_id", userId)
+    .neq("status", "rejected");
+
+  const totalWithdrawals =
+    withdrawals?.reduce(
+      (sum: number, w: any) => sum + w.amount + (w.fee || 0),
+      0
+    ) || 0;
+
+  return totalDeposited + totalProfit - activeInvestments - totalWithdrawals;
 };
 
 export const resolvers = {
@@ -562,6 +577,55 @@ export const resolvers = {
 
       if (error) throw new Error(error.message);
       return { ...user, ...data };
+    },
+    requestWithdrawal: async (
+      _: any,
+      { amount, walletAddress }: any,
+      context: any
+    ) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // 1. Validation
+      if (amount < 10) throw new Error("Minimum withdrawal is 10 USDT");
+
+      // Validate TRON address (starts with T, 34 chars)
+      const tronRegex = /^T[a-zA-Z0-9]{33}$/;
+      if (!tronRegex.test(walletAddress)) {
+        throw new Error(
+          "Invalid TRON (TRC20) address. Must start with 'T' and be 34 characters long."
+        );
+      }
+
+      const FEE = 3.0;
+      const totalDeduction = amount + FEE;
+
+      // 2. Check Balance
+      const availableBalance = await getAvailableBalance(client, user.id);
+      if (availableBalance < totalDeduction) {
+        throw new Error(
+          `Insufficient balance. You need ${totalDeduction.toFixed(
+            2
+          )} USDT (incl. $3 fee)`
+        );
+      }
+
+      // 3. Create Request
+      const { data, error } = await client
+        .from("withdrawal_requests")
+        .insert({
+          user_id: user.id,
+          amount: amount,
+          fee: FEE,
+          wallet_address: walletAddress,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
     },
   },
 };

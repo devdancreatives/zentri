@@ -114,6 +114,7 @@ export const GET_MY_WITHDRAWALS = gql`
     myWithdrawals {
       id
       amount
+      fee
       walletAddress
       status
       txHash
@@ -160,6 +161,7 @@ export const REQUEST_WITHDRAWAL = gql`
     requestWithdrawal(amount: $amount, walletAddress: $walletAddress) {
       id
       amount
+      fee
       walletAddress
       status
       createdAt
