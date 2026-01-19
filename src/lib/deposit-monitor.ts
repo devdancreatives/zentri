@@ -6,12 +6,13 @@ import {
   parseTransaction,
   transactionExists,
   getMinConfirmations,
-} from "./tron";
+  type BscScanTransaction,
+} from "./bsc";
 import { sendDepositNotification } from "./email";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 interface DepositResult {
@@ -67,7 +68,7 @@ export async function monitorDeposits(): Promise<DepositResult> {
 async function checkWalletDeposits(
   address: string,
   userId: string,
-  result: DepositResult
+  result: DepositResult,
 ): Promise<void> {
   // Fetch recent transactions
   const transactions = await getWalletTransactions(address, 20);
@@ -79,13 +80,14 @@ async function checkWalletDeposits(
     }
 
     // Check if already processed
-    const exists = await transactionExists(tx.transaction_id);
+    // BscScanTransaction doesn't have transaction_id, it has hash
+    const exists = await transactionExists(tx.hash);
     if (exists) {
       continue;
     }
 
     // Get confirmations
-    const confirmations = await getTransactionConfirmations(tx.transaction_id);
+    const confirmations = await getTransactionConfirmations(tx.hash);
     const minConfirmations = getMinConfirmations();
 
     if (confirmations >= minConfirmations) {
@@ -108,16 +110,16 @@ async function checkWalletDeposits(
  * Process a confirmed deposit
  */
 async function processDeposit(
-  tx: any,
+  tx: BscScanTransaction,
   userId: string,
-  confirmations: number
+  _confirmations: number,
 ): Promise<boolean> {
   try {
     const parsedTx = parseTransaction(tx);
     const amount = parsedTx.amount;
 
     // Start a transaction
-    const { data: deposit, error: depositError } = await supabase
+    const { error: depositError } = await supabase
       .from("deposits")
       .insert({
         user_id: userId,
@@ -176,7 +178,7 @@ async function processDeposit(
         user.email,
         user.full_name || "User",
         amount,
-        parsedTx.txHash
+        parsedTx.txHash,
       );
     }
 
@@ -192,9 +194,9 @@ async function processDeposit(
  * Save pending deposit (not enough confirmations yet)
  */
 async function savePendingDeposit(
-  tx: any,
+  tx: BscScanTransaction,
   userId: string,
-  confirmations: number
+  confirmations: number,
 ): Promise<void> {
   try {
     const parsedTx = parseTransaction(tx);
@@ -208,11 +210,11 @@ async function savePendingDeposit(
       },
       {
         onConflict: "tx_hash",
-      }
+      },
     );
 
     console.log(
-      `⏳ Pending deposit: ${parsedTx.amount} USDT (${confirmations} confirmations)`
+      `⏳ Pending deposit: ${parsedTx.amount} USDT (${confirmations} confirmations)`,
     );
   } catch (error) {
     console.error("Error saving pending deposit:", error);

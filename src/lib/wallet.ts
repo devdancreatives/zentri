@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import * as bip39 from "bip39";
 import BIP32Factory from "bip32";
 import * as ecc from "tiny-secp256k1";
@@ -17,7 +18,7 @@ const sha256 = (buffer: Buffer) => {
 
 export const getTronAddress = async (
   mnemonic: string,
-  index: number
+  index: number,
 ): Promise<{ address: string; path: string }> => {
   if (!mnemonic) throw new Error("Mnemonic is required");
 
@@ -52,4 +53,31 @@ export const getTronAddress = async (
   const address = bs58.encode(finalBytes);
 
   return { address, path };
+};
+
+export const getBscAddress = async (
+  mnemonic: string,
+  index: number,
+): Promise<{ address: string; path: string }> => {
+  if (!mnemonic) throw new Error("Mnemonic is required");
+
+  // Validate mnemonic
+  if (!bip39.validateMnemonic(mnemonic)) {
+    throw new Error("Invalid mnemonic phrase");
+  }
+
+  const seed = await bip39.mnemonicToSeed(mnemonic);
+  const root = bip32.fromSeed(seed);
+
+  // BSC/ETH path: m/44'/60'/0'/0/index
+  const path = `m/44'/60'/0'/0/${index}`;
+  const child = root.derivePath(path);
+
+  if (!child.privateKey) throw new Error("No private key derived");
+
+  const wallet = new ethers.Wallet(
+    Buffer.from(child.privateKey).toString("hex"),
+  );
+
+  return { address: wallet.address, path };
 };

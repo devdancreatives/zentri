@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, History, Settings, LogOut, User, Users, FileText, Shield, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, History, Settings, LogOut, User, Users, FileText, Shield, Menu, X, MessageSquare } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { usePathname, useRouter } from 'next/navigation'
 import { clsx } from 'clsx'
@@ -23,6 +23,7 @@ const baseNavItems = [
     { name: 'Investments', href: '/dashboard/investments', icon: History },
     { name: 'Referrals', href: '/dashboard/referrals', icon: Users },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
+    { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare }, // Added Chat
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 

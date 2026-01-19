@@ -1,5 +1,5 @@
 import { createAuthenticatedClient, supabase } from "@/lib/supabase";
-import { getTronAddress } from "@/lib/wallet";
+import { getBscAddress } from "@/lib/wallet";
 import { sendOtpEmail } from "@/lib/email";
 import { createClient } from "@supabase/supabase-js";
 
@@ -77,7 +77,7 @@ const getAvailableBalance = async (client: any, userId: string) => {
   const totalWithdrawals =
     withdrawals?.reduce(
       (sum: number, w: any) => sum + w.amount + (w.fee || 0),
-      0
+      0,
     ) || 0;
 
   return (
@@ -143,7 +143,7 @@ export const resolvers = {
     myTransactions: async (
       _: any,
       { limit = 50, offset = 0 }: any,
-      context: any
+      context: any,
     ) => {
       const client = getClient(context);
       const user = await getUser(client);
@@ -252,7 +252,7 @@ export const resolvers = {
       const { data } = await client
         .from("referral_earnings")
         .select(
-          "*, investment:investment_id(*), referredUser:referred_user_id(*)"
+          "*, investment:investment_id(*), referredUser:referred_user_id(*)",
         )
         .in("referral_id", referralIds)
         .order("created_at", { ascending: false });
@@ -272,6 +272,49 @@ export const resolvers = {
 
       return data;
     },
+    myChats: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const { data } = await client
+        .from("chats")
+        .select("*, messages:chat_messages(*)")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+
+      return data;
+    },
+    chatDetails: async (_: any, { chatId }: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // Verify ownership
+      const { data: chat } = await client
+        .from("chats")
+        .select("*, messages:chat_messages(*)")
+        .eq("id", chatId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!chat) throw new Error("Chat not found");
+
+      // Mark admin messages as read? (Optional)
+      return chat;
+    },
+  },
+  Chat: {
+    userId: (parent: any) => parent.user_id,
+    createdAt: (parent: any) => parent.created_at,
+    updatedAt: (parent: any) => parent.updated_at,
+    // messages handled by default or could be explicit
+  },
+  ChatMessage: {
+    chatId: (parent: any) => parent.chat_id,
+    senderId: (parent: any) => parent.sender_id,
+    senderRole: (parent: any) => parent.sender_role,
+    createdAt: (parent: any) => parent.created_at,
   },
   User: {
     fullName: (parent: any) => parent.full_name,
@@ -329,7 +372,7 @@ export const resolvers = {
     createInvestment: async (
       _: any,
       { amount, durationMonths }: any,
-      context: any
+      context: any,
     ) => {
       const client = getClient(context);
       const user = await getUser(client);
@@ -343,7 +386,7 @@ export const resolvers = {
       const balance = await getAvailableBalance(client, user.id);
       if (balance < totalDeduction)
         throw new Error(
-          `Insufficient balance including ${fee.toFixed(2)} USDT fee (0.1%)`
+          `Insufficient balance including ${fee.toFixed(2)} USDT fee (0.1%)`,
         );
 
       const startDate = new Date();
@@ -406,7 +449,7 @@ export const resolvers = {
       const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY ||
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       );
 
       const { count } = await serviceClient
@@ -414,7 +457,7 @@ export const resolvers = {
         .select("*", { count: "exact", head: true });
       const index = (count || 0) + 1;
 
-      const { address } = await getTronAddress(mnemonic, index);
+      const { address } = await getBscAddress(mnemonic, index);
 
       const { data, error } = await client
         .from("wallets")
@@ -442,7 +485,7 @@ export const resolvers = {
 
       const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
       );
 
       const { data: investments } = await serviceClient
@@ -455,7 +498,7 @@ export const resolvers = {
 
       const totalCapital = investments.reduce(
         (sum: number, inv: any) => sum + inv.amount,
-        0
+        0,
       );
       if (totalCapital === 0) return "Total capital is 0";
 
@@ -487,7 +530,7 @@ export const resolvers = {
 
       const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
       );
 
       const { error } = await serviceClient
@@ -502,11 +545,11 @@ export const resolvers = {
     },
     registerWithOtp: async (
       _: any,
-      { email, otp, password, fullName, referralCode }: any
+      { email, otp, password, fullName, referralCode }: any,
     ) => {
       const serviceClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
       );
 
       const { data: codes } = await serviceClient
@@ -589,7 +632,7 @@ export const resolvers = {
     requestWithdrawal: async (
       _: any,
       { amount, walletAddress }: any,
-      context: any
+      context: any,
     ) => {
       const client = getClient(context);
       const user = await getUser(client);
@@ -598,11 +641,11 @@ export const resolvers = {
       // 1. Validation
       if (amount < 10) throw new Error("Minimum withdrawal is 10 USDT");
 
-      // Validate TRON address (starts with T, 34 chars)
-      const tronRegex = /^T[a-zA-Z0-9]{33}$/;
-      if (!tronRegex.test(walletAddress)) {
+      // Validate BSC/EVM address (starts with 0x, 42 chars)
+      const evmRegex = /^0x[a-fA-F0-9]{40}$/;
+      if (!evmRegex.test(walletAddress)) {
         throw new Error(
-          "Invalid TRON (TRC20) address. Must start with 'T' and be 34 characters long."
+          "Invalid BSC (BEP20) address. Must start with '0x' and be 42 characters long.",
         );
       }
 
@@ -614,8 +657,8 @@ export const resolvers = {
       if (availableBalance < totalDeduction) {
         throw new Error(
           `Insufficient balance. You need ${totalDeduction.toFixed(
-            2
-          )} USDT (incl. $3 fee)`
+            2,
+          )} USDT (incl. $3 fee)`,
         );
       }
 
@@ -634,6 +677,86 @@ export const resolvers = {
 
       if (error) throw new Error(error.message);
       return data;
+    },
+
+    createChat: async (_: any, { initialMessage }: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // 1. Create Chat
+      const { data: chat, error: chatError } = await client
+        .from("chats")
+        .insert({
+          user_id: user.id,
+          status: "open",
+        })
+        .select()
+        .single();
+
+      if (chatError) throw new Error(chatError.message);
+
+      // 2. Create Initial Message
+      const { error: msgError } = await client.from("chat_messages").insert({
+        chat_id: chat.id,
+        sender_id: user.id,
+        sender_role: "user",
+        content: initialMessage,
+      });
+
+      if (msgError) throw new Error(msgError.message);
+
+      // Return the chat with messages
+      return {
+        ...chat,
+        messages: [
+          {
+            chat_id: chat.id,
+            sender_id: user.id,
+            sender_role: "user",
+            content: initialMessage,
+            read: false,
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+    },
+    sendMessage: async (_: any, { chatId, content }: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // Verify chat ownership
+      const { data: chat } = await client
+        .from("chats")
+        .select("id")
+        .eq("id", chatId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!chat) throw new Error("Chat not found");
+
+      // Insert message
+      const { data: message, error } = await client
+        .from("chat_messages")
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          sender_role: "user",
+          content: content,
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      // Update chat updated_at
+      await client
+        .from("chats")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", chatId);
+
+      return message;
     },
   },
 };

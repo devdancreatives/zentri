@@ -95,6 +95,25 @@ export const typeDefs = `
     processedAt: DateTime
   }
 
+  type Chat {
+    id: ID!
+    userId: ID!
+    status: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    messages: [ChatMessage]
+  }
+
+  type ChatMessage {
+    id: ID!
+    chatId: ID!
+    senderId: ID
+    senderRole: String
+    content: String!
+    read: Boolean!
+    createdAt: DateTime!
+  }
+
   type Query {
     me: User
     myInvestments: [Investment]
@@ -105,6 +124,8 @@ export const typeDefs = `
     myReferrals: [Referral]
     myReferralEarnings: [ReferralEarning]
     myWithdrawals: [WithdrawalRequest]
+    myChats: [Chat]
+    chatDetails(chatId: ID!): Chat
   }
 
   type Mutation {
@@ -116,5 +137,7 @@ export const typeDefs = `
     registerWithOtp(email: String!, otp: String!, password: String!, fullName: String!, referralCode: String): User
     updateProfile(fullName: String): User
     requestWithdrawal(amount: Float!, walletAddress: String!): WithdrawalRequest
+    createChat(initialMessage: String!): Chat
+    sendMessage(chatId: ID!, content: String!): ChatMessage
   }
 `;

@@ -264,3 +264,66 @@ export const ADMIN_DISTRIBUTE_PROFIT = gql`
     adminDistributeProfit(amount: $amount)
   }
 `;
+
+export const GET_MY_CHATS = gql`
+  query GetMyChats {
+    myChats {
+      id
+      status
+      updatedAt
+      messages {
+        id
+        content
+        senderRole
+        read
+        createdAt
+      }
+    }
+  }
+`;
+
+export const GET_CHAT_DETAILS = gql`
+  query GetChatDetails($chatId: ID!) {
+    chatDetails(chatId: $chatId) {
+      id
+      status
+      updatedAt
+      messages {
+        id
+        content
+        senderRole
+        read
+        createdAt
+      }
+    }
+  }
+`;
+
+export const CREATE_CHAT = gql`
+  mutation CreateChat($initialMessage: String!) {
+    createChat(initialMessage: $initialMessage) {
+      id
+      status
+      updatedAt
+      messages {
+        id
+        content
+        senderRole
+        read
+        createdAt
+      }
+    }
+  }
+`;
+
+export const SEND_MESSAGE = gql`
+  mutation SendMessage($chatId: ID!, $content: String!) {
+    sendMessage(chatId: $chatId, content: $content) {
+      id
+      content
+      senderRole
+      read
+      createdAt
+    }
+  }
+`;

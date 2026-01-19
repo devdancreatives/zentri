@@ -79,9 +79,9 @@ export default function WalletPage() {
             return
         }
 
-        const tronRegex = /^T[a-zA-Z0-9]{33}$/
-        if (!tronRegex.test(withdrawAddress)) {
-            setWithdrawError("Invalid TRON address. Must start with 'T' and be 34 chars.")
+        const evmRegex = /^0x[a-fA-F0-9]{40}$/
+        if (!evmRegex.test(withdrawAddress)) {
+            setWithdrawError("Invalid BSC address. Must start with '0x' and be 42 chars.")
             return
         }
 
@@ -153,7 +153,7 @@ export default function WalletPage() {
                         <h2 className="text-lg font-semibold text-white mb-4">Wallet Address</h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-2">TRON (TRC20) Address</label>
+                                <label className="block text-sm text-zinc-400 mb-2">BSC (BEP20) Address</label>
                                 <div className="flex flex-row items-stretch sm:items-center gap-2">
                                     <div className="flex-1 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700 font-mono text-sm text-white overflow-hidden">
                                         <span className="hidden sm:inline break-all">{wallet.address}</span>
@@ -178,7 +178,7 @@ export default function WalletPage() {
                             <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-zinc-800/30 border border-zinc-700">
                                 <div>
                                     <p className="text-xs text-zinc-500 mb-1">Network</p>
-                                    <p className="text-sm font-semibold text-white">TRON (TRC20)</p>
+                                    <p className="text-sm font-semibold text-white">BSC (BEP20)</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-zinc-500 mb-1">Token Symbol</p>
@@ -246,7 +246,7 @@ export default function WalletPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-blue-500/5 to-blue-600/5 border-blue-500/20 p-6 backdrop-blur-sm">
+                    <div className="rounded-xl border bg-linear-to-br from-blue-500/5 to-blue-600/5 border-blue-500/20 p-6 backdrop-blur-sm">
                         <h3 className="text-sm font-semibold text-blue-400 mb-2">⚠️ Important Information</h3>
                         <ul className="space-y-2 text-sm text-zinc-300">
                             <li className="flex items-start gap-2">
@@ -255,7 +255,7 @@ export default function WalletPage() {
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-blue-400 mt-1">•</span>
-                                <span><strong>Network:</strong> TRON (TRC20) only - verify your destination address carefully.</span>
+                                <span><strong>Network:</strong> BSC (BEP20) only - verify your destination address carefully.</span>
                             </li>
                         </ul>
                     </div>
@@ -263,13 +263,13 @@ export default function WalletPage() {
                     <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm">
                         <h3 className="text-sm font-semibold text-white mb-4">View on Blockchain</h3>
                         <a
-                            href={`https://tronscan.org/#/address/${wallet.address}`}
+                            href={`https://bscscan.com/address/${wallet.address}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 text-yellow-500 hover:text-yellow-400 transition-colors"
                         >
                             <ExternalLink className="h-4 w-4" />
-                            View on TronScan
+                            View on BscScan
                         </a>
                     </div>
                 </div>
@@ -301,13 +301,13 @@ export default function WalletPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-zinc-400 mb-2">Destination Address (TRC20)</label>
+                                <label className="block text-sm text-zinc-400 mb-2">Destination Address (BEP20)</label>
                                 <input
                                     type="text"
                                     value={withdrawAddress}
                                     onChange={(e) => setWithdrawAddress(e.target.value)}
                                     className="w-full px-4 py-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:outline-hidden focus:border-yellow-500 transition-colors font-mono"
-                                    placeholder="T..."
+                                    placeholder="0x..."
                                     required
                                 />
                             </div>

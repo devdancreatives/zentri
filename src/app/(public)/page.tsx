@@ -82,7 +82,7 @@ export default function LandingPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {[
                             { step: '01', title: 'Create Account', desc: 'Sign up in seconds and secure your personal wallet.' },
-                            { step: '02', title: 'Make Deposit', desc: 'Transfer USDT (TRC20) to your dedicated deposit address.' },
+                            { step: '02', title: 'Make Deposit', desc: 'Transfer USDT (BSC BEP20) to your dedicated deposit address.' },
                             { step: '03', title: 'Earn Rewards', desc: 'Watch your portfolio grow with weekly ROI distributions.' }
                         ].map((item, i) => (
                             <div key={i} className="relative p-8 rounded-2xl bg-zinc-900/50 border border-zinc-800">
