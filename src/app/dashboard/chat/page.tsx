@@ -46,8 +46,8 @@ export default function ChatPage() {
     const { data, loading, refetch } = useQuery<GetMyChatsData>(GET_MY_CHATS, {
         pollInterval: 5000, // Real-time-ish updates
     })
-    const [createChat] = useMutation<CreateChatData, CreateChatVars>(CREATE_CHAT)
-    const [sendMessage] = useMutation<SendMessageData, SendMessageVars>(SEND_MESSAGE)
+    const [createChat, { loading: creating }] = useMutation<CreateChatData, CreateChatVars>(CREATE_CHAT)
+    const [sendMessage, { loading: sending }] = useMutation<SendMessageData, SendMessageVars>(SEND_MESSAGE)
 
     const [input, setInput] = useState('')
     const [activeChatId, setActiveChatId] = useState<string | null>(null)
@@ -191,7 +191,7 @@ export default function ChatPage() {
                         />
                         <button
                             onClick={handleSend}
-                            disabled={!input.trim()}
+                            disabled={!input.trim() || creating || sending}
                             className="absolute right-2 p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <Send size={18} />
