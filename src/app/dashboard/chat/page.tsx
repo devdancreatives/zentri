@@ -77,11 +77,14 @@ export default function ChatPage() {
     const handleSend = async () => {
         if (!input.trim()) return
 
+        const originalInput = input
+        setInput('') // Optimistically clear input
+
         try {
             if (!activeChatId) {
                 // Create new chat
                 const { data } = await createChat({
-                    variables: { initialMessage: input }
+                    variables: { initialMessage: originalInput }
                 })
                 if (data?.createChat) {
                     setActiveChatId(data.createChat.id)
@@ -89,13 +92,13 @@ export default function ChatPage() {
             } else {
                 // Send to existing
                 await sendMessage({
-                    variables: { chatId: activeChatId, content: input }
+                    variables: { chatId: activeChatId, content: originalInput }
                 })
             }
-            setInput('')
             refetch()
         } catch (error) {
             console.error('Error sending message:', error)
+            setInput(originalInput) // Restore input on error
         }
     }
 
@@ -153,7 +156,7 @@ export default function ChatPage() {
                                             : 'bg-zinc-800 text-zinc-200'
                                             }`}
                                     >
-                                        <p className="text-sm break-words">{msg.content}</p>
+                                        <p className="text-sm wrap-break-word">{msg.content}</p>
                                         <span className={`mt-1 block text-[10px] ${isUser ? 'text-black/60' : 'text-zinc-500'}`}>
                                             {format(new Date(msg.createdAt), 'HH:mm')}
                                         </span>

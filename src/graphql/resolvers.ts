@@ -762,10 +762,21 @@ export const resolvers = {
       return message;
     },
     requestOtp: async (_: any, { email, fullName }: any) => {
+      const serviceClient = getServiceClient();
+
+      // Check if user already exists
+      const { data: existingUser } = await serviceClient
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .single();
+
+      if (existingUser) {
+        throw new Error("User with this email already exists");
+      }
+
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins
-
-      const serviceClient = getServiceClient();
 
       const { error } = await serviceClient
         .from("verification_codes")
