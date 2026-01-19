@@ -118,6 +118,19 @@ export default function WalletPage() {
                 )}
             </div>
 
+            {/* Balance Card */}
+            {wallet && (
+                <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-6 flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-yellow-500/80 mb-1">Available Funds</p>
+                        <h2 className="text-3xl font-bold text-yellow-500">${data?.me?.availableBalance?.toFixed(2) || '0.00'}</h2>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                        <WalletIcon className="h-6 w-6 text-yellow-500" />
+                    </div>
+                </div>
+            )}
+
             {!wallet ? (
                 <div className="rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-12 text-center backdrop-blur-sm">
                     <div className="max-w-md mx-auto">

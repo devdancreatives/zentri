@@ -1,15 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { useMutation } from '@apollo/client/react'
+import { useQuery, useMutation } from '@apollo/client/react'
 import { Loader2 } from 'lucide-react'
-import { CREATE_INVESTMENT } from '@/graphql/queries'
+import { CREATE_INVESTMENT, GET_ME } from '@/graphql/queries'
 
 export default function InvestPage() {
     const [amount, setAmount] = useState('')
     const [duration, setDuration] = useState('1')
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
+
+    const { data: userData } = useQuery<any>(GET_ME)
+    const availableBalance = userData?.me?.availableBalance || 0
 
     const [createInvestment, { loading }] = useMutation(CREATE_INVESTMENT, {
         onCompleted: () => {
@@ -57,8 +60,9 @@ export default function InvestPage() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 backdrop-blur-xl">
                 <form onSubmit={handleInvest} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-zinc-400">
-                            Investment Amount (USDT)
+                        <label className="text-sm font-medium text-zinc-400 flex justify-between">
+                            <span>Investment Amount (USDT)</span>
+                            <span className="text-xs text-yellow-500">Available: ${availableBalance.toFixed(2)}</span>
                         </label>
                         <input
                             type="number"

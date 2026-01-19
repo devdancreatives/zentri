@@ -21,7 +21,7 @@ export default function DashboardPage() {
     }>
     const activeInvestments = investments.filter(inv => inv.status === 'active')
     const totalInvested = activeInvestments.reduce((sum, inv) => sum + inv.amount, 0)
-    const balance = user?.balance || 0
+    const balance = user?.availableBalance || 0
     const roiData = (data?.myROI || []) as Array<{ profitAmount: number }>
     const totalProfit = roiData.reduce((sum, roi) => sum + roi.profitAmount, 0)
     const transactions = (data?.myTransactions || []) as Array<{
@@ -43,7 +43,7 @@ export default function DashboardPage() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <div className="group rounded-xl border border-zinc-800 bg-linear-to-br from-zinc-900/50 to-zinc-900/30 p-6 backdrop-blur-sm hover:border-yellow-500/30 transition-all">
                     <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm font-medium text-zinc-400">Total Balance</p>
+                        <p className="text-sm font-medium text-zinc-400">Available Balance</p>
                         <div className="p-2 rounded-lg bg-yellow-500/10 group-hover:bg-yellow-500/20 transition-all">
                             <DollarSign className="h-5 w-5 text-yellow-500" />
                         </div>
