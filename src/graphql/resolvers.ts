@@ -47,13 +47,66 @@ const getBonusLabel = (milestone: number): string => {
 };
 
 const getAvailableBalance = async (client: any, userId: string) => {
+  // 1. Get Manual Balance (Admin Adjustments)
   const { data: user } = await client
     .from("users")
     .select("balance")
     .eq("id", userId)
     .single();
+  const manualBalance = user?.balance || 0;
 
-  return user?.balance || 0;
+  // 2. Sum confirmed deposits
+  const { data: deposits } = await client
+    .from("deposits")
+    .select("amount")
+    .eq("user_id", userId)
+    .eq("status", "confirmed");
+  const totalDeposited =
+    deposits?.reduce((a: number, b: any) => a + b.amount, 0) || 0;
+
+  // 3. Sum investments (Amount for ACTIVE only, Fee for ALL)
+  const { data: investments } = await client
+    .from("investments")
+    .select("amount, fee, status")
+    .eq("user_id", userId);
+
+  const activeInvestmentsAmount =
+    investments
+      ?.filter((i: any) => i.status === "active")
+      .reduce((a: number, b: any) => a + b.amount, 0) || 0;
+
+  const totalInvestmentFees =
+    investments?.reduce((a: number, b: any) => a + (b.fee || 0), 0) || 0;
+
+  // 4. Sum profits
+  const { data: roi } = await client
+    .from("roi_snapshots")
+    .select("profit_amount")
+    .eq("user_id", userId);
+  const totalProfit =
+    roi?.reduce((a: number, b: any) => a + b.profit_amount, 0) || 0;
+
+  // 5. Sum pending or processed withdrawals
+  const { data: withdrawals } = await client
+    .from("withdrawal_requests")
+    .select("amount, fee")
+    .eq("user_id", userId)
+    .neq("status", "rejected");
+
+  const totalWithdrawals =
+    withdrawals?.reduce(
+      (sum: number, w: any) => sum + w.amount + (w.fee || 0),
+      0,
+    ) || 0;
+
+  return (
+    manualBalance +
+    totalDeposited +
+    totalProfit -
+    activeInvestmentsAmount -
+    totalInvestmentFees -
+    totalWithdrawals
+  );
 };
 
 export const resolvers = {
