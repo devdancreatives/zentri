@@ -23,6 +23,17 @@ const getUser = async (client: any) => {
   if (error || !user) return null;
   return user;
 };
+const getServiceClient = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.error(
+      "Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL",
+    );
+    throw new Error("Server misconfiguration: Missing Service Key");
+  }
+  return createClient(url, key);
+};
 
 const getBonusLabel = (milestone: number): string => {
   const labels: Record<number, string> = {
@@ -303,12 +314,170 @@ export const resolvers = {
       // Mark admin messages as read? (Optional)
       return chat;
     },
+    adminStats: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      const { count: totalUsers } = await serviceClient
+        .from("users")
+        .select("*", { count: "exact", head: true });
+
+      const { data: deposits } = await serviceClient
+        .from("deposits")
+        .select("amount")
+        .eq("status", "confirmed");
+      const totalDeposited =
+        deposits?.reduce((sum, d) => sum + d.amount, 0) || 0;
+
+      const { data: withdrawals } = await serviceClient
+        .from("withdrawal_requests")
+        .select("amount")
+        .eq("status", "completed");
+      const totalWithdrawals =
+        withdrawals?.reduce((sum, w) => sum + w.amount, 0) || 0;
+
+      const { count: pendingWithdrawals } = await serviceClient
+        .from("withdrawal_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+
+      return {
+        totalUsers: totalUsers || 0,
+        totalDeposits: totalDeposited,
+        totalWithdrawals: totalWithdrawals,
+        pendingWithdrawals: pendingWithdrawals || 0,
+      };
+    },
+    adminUsers: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      const { data } = await serviceClient
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+      return data;
+    },
+    adminDeposits: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      const { data } = await serviceClient
+        .from("deposits")
+        .select("*, user:user_id(email, full_name)")
+        .order("created_at", { ascending: false });
+      return data;
+    },
+    adminWithdrawals: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      const { data } = await serviceClient
+        .from("withdrawal_requests")
+        .select("*, user:user_id(email, full_name)")
+        .order("created_at", { ascending: false });
+      return data;
+    },
+    adminChats: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      // 1. Get Chats
+      const { data: chats, error: chatError } = await serviceClient
+        .from("chats")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (chatError) throw new Error(chatError.message);
+      if (!chats || chats.length === 0) return [];
+
+      // 2. Get Users
+      const userIds = [...new Set(chats.map((c: any) => c.user_id))];
+      const { data: users } = await serviceClient
+        .from("users")
+        .select("id, email, full_name")
+        .in("id", userIds);
+
+      // 3. Get Messages
+      const chatIds = chats.map((c: any) => c.id);
+      const { data: messages } = await serviceClient
+        .from("chat_messages")
+        .select("*")
+        .in("chat_id", chatIds)
+        .order("created_at", { ascending: true });
+
+      // 4. Stitch Relations
+      return chats.map((chat: any) => ({
+        ...chat,
+        user: users?.find((u: any) => u.id === chat.user_id),
+        messages: messages?.filter((m: any) => m.chat_id === chat.id),
+      }));
+    },
+    adminInvestments: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      const { data } = await serviceClient
+        .from("investments")
+        .select("*, user:user_id(email, full_name)")
+        .order("created_at", { ascending: false });
+      return data;
+    },
   },
   Chat: {
     userId: (parent: any) => parent.user_id,
     createdAt: (parent: any) => parent.created_at,
     updatedAt: (parent: any) => parent.updated_at,
-    // messages handled by default or could be explicit
+    user: (parent: any) => parent.user, // For admin view
   },
   ChatMessage: {
     chatId: (parent: any) => parent.chat_id,
@@ -317,16 +486,22 @@ export const resolvers = {
     createdAt: (parent: any) => parent.created_at,
   },
   User: {
+    createdAt: (parent: any) => parent.created_at,
     fullName: (parent: any) => parent.full_name,
     referralCode: (parent: any) => parent.referral_code,
     referralEarnings: (parent: any) => parent.referral_earnings,
     availableBalance: async (parent: any, _: any, context: any) => {
+      // If parent has availableBalance already (e.g. from custom query), use it?
+      // Actually standard resolver is fine, but rigorous check:
       const client = getClient(context);
       return getAvailableBalance(client, parent.id);
     },
     wallet: async (parent: any, _: any, context: any) => {
       const client = getClient(context);
-      const { data } = await client
+      // Admin might want to see any wallet?
+      // Use service client if needed or reuse existing logic
+      const serviceClient = getServiceClient();
+      const { data } = await serviceClient
         .from("wallets")
         .select("*")
         .eq("user_id", parent.id)
@@ -341,11 +516,13 @@ export const resolvers = {
     txHash: (parent: any) => parent.tx_hash,
     createdAt: (parent: any) => parent.created_at,
     confirmedAt: (parent: any) => parent.confirmed_at,
+    user: (parent: any) => parent.user,
   },
   Investment: {
     durationMonths: (parent: any) => parent.duration_months,
     startDate: (parent: any) => parent.start_date,
     endDate: (parent: any) => parent.end_date,
+    user: (parent: any) => parent.user,
   },
   Transaction: {
     createdAt: (parent: any) => parent.created_at,
@@ -367,6 +544,7 @@ export const resolvers = {
     txHash: (parent: any) => parent.tx_hash,
     createdAt: (parent: any) => parent.created_at,
     processedAt: (parent: any) => parent.processed_at,
+    user: (parent: any) => parent.user,
   },
   Mutation: {
     createInvestment: async (
@@ -446,11 +624,7 @@ export const resolvers = {
         process.env.WALLET_MNEMONIC ||
         "test mnemonic for dev environment only do not use in production";
 
-      const serviceClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY ||
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      );
+      const serviceClient = getServiceClient();
 
       const { count } = await serviceClient
         .from("wallets")
@@ -483,10 +657,7 @@ export const resolvers = {
         .single();
       if (profile?.role !== "admin") throw new Error("Admin only");
 
-      const serviceClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      );
+      const serviceClient = getServiceClient();
 
       const { data: investments } = await serviceClient
         .from("investments")
@@ -524,14 +695,77 @@ export const resolvers = {
         investments.length
       } investments (ROI: ${roiPercentage.toFixed(2)}%)`;
     },
+    adminUpdateWithdrawalStatus: async (
+      _: any,
+      { id, status, txHash }: any,
+      context: any,
+    ) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      const updateData: any = {
+        status,
+        processed_at: new Date().toISOString(),
+      };
+      if (txHash) updateData.tx_hash = txHash;
+
+      const { data, error } = await serviceClient
+        .from("withdrawal_requests")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    adminReplyChat: async (_: any, { chatId, content }: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      // Insert admin message
+      const { data: message, error } = await serviceClient
+        .from("chat_messages")
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          sender_role: "admin", // Admin role
+          content: content,
+        })
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      // Update chat status if needed (e.g., waiting for user)
+      await serviceClient
+        .from("chats")
+        .update({ updated_at: new Date().toISOString(), status: "answered" })
+        .eq("id", chatId);
+
+      return message;
+    },
     requestOtp: async (_: any, { email, fullName }: any) => {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins
 
-      const serviceClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      );
+      const serviceClient = getServiceClient();
 
       const { error } = await serviceClient
         .from("verification_codes")
@@ -547,10 +781,7 @@ export const resolvers = {
       _: any,
       { email, otp, password, fullName, referralCode }: any,
     ) => {
-      const serviceClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      );
+      const serviceClient = getServiceClient();
 
       const { data: codes } = await serviceClient
         .from("verification_codes")
@@ -757,6 +988,36 @@ export const resolvers = {
         .eq("id", chatId);
 
       return message;
+    },
+
+    adminUpdateUser: async (_: any, { id, input }: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+      if (profile?.role !== "admin") throw new Error("Admin only");
+
+      const serviceClient = getServiceClient();
+
+      // Helper to convert camelCase to snake_case
+      const updates: any = {};
+      if (input.fullName !== undefined) updates.full_name = input.fullName;
+      if (input.email !== undefined) updates.email = input.email;
+      if (input.role !== undefined) updates.role = input.role;
+      if (input.balance !== undefined) updates.balance = input.balance;
+
+      const { data, error } = await serviceClient
+        .from("users")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
     },
   },
 };

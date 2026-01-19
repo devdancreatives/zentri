@@ -14,6 +14,7 @@ export const typeDefs = `
     deposits: [Deposit]
     transactions: [Transaction]
     availableBalance: Float
+    createdAt: DateTime
   }
 
   type Wallet {
@@ -28,6 +29,7 @@ export const typeDefs = `
     status: String!
     createdAt: DateTime!
     confirmedAt: DateTime
+    user: User
   }
 
   type Investment {
@@ -37,6 +39,7 @@ export const typeDefs = `
     startDate: DateTime!
     endDate: DateTime!
     status: String!
+    user: User
   }
 
   type ROISnapshot {
@@ -93,6 +96,7 @@ export const typeDefs = `
     txHash: String
     createdAt: DateTime!
     processedAt: DateTime
+    user: User
   }
 
   type Chat {
@@ -101,6 +105,7 @@ export const typeDefs = `
     status: String!
     createdAt: DateTime!
     updatedAt: DateTime!
+    user: User
     messages: [ChatMessage]
   }
 
@@ -126,18 +131,47 @@ export const typeDefs = `
     myWithdrawals: [WithdrawalRequest]
     myChats: [Chat]
     chatDetails(chatId: ID!): Chat
+    
+    # Admin Queries
+    adminStats: AdminStats
+    adminUsers: [User]
+    adminDeposits: [Deposit]
+    adminWithdrawals: [WithdrawalRequest]
+    adminChats: [Chat]
+    adminInvestments: [Investment]
+  }
+
+  type AdminStats {
+    totalUsers: Int!
+    totalDeposits: Float!
+    totalWithdrawals: Float!
+    pendingWithdrawals: Int!
+  }
+
+  input AdminUpdateUserInput {
+    fullName: String
+    email: String
+    role: String
+    balance: Float
   }
 
   type Mutation {
     createInvestment(amount: Float!, durationMonths: Int!): Investment
     simulateDeposit(amount: Float!, txHash: String!): Deposit
     createMyWallet: Wallet
-    adminDistributeProfit(amount: Float!): String
     requestOtp(email: String!, fullName: String!): Boolean
     registerWithOtp(email: String!, otp: String!, password: String!, fullName: String!, referralCode: String): User
     updateProfile(fullName: String): User
     requestWithdrawal(amount: Float!, walletAddress: String!): WithdrawalRequest
     createChat(initialMessage: String!): Chat
     sendMessage(chatId: ID!, content: String!): ChatMessage
+    changePassword(password: String!): Boolean
+    
+    # Admin Mutations
+    adminDistributeProfit(amount: Float!): String
+    adminUpdateWithdrawalStatus(id: ID!, status: String!, txHash: String): WithdrawalRequest
+    adminReplyChat(chatId: ID!, content: String!): ChatMessage
+    adminCloseChat(chatId: ID!): Chat
+    adminUpdateUser(id: ID!, input: AdminUpdateUserInput!): User
   }
 `;

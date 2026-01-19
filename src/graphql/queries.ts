@@ -327,3 +327,146 @@ export const SEND_MESSAGE = gql`
     }
   }
 `;
+
+export const CHANGE_PASSWORD = gql`
+  mutation ChangePassword($password: String!) {
+    changePassword(password: $password)
+  }
+`;
+
+export const GET_ADMIN_STATS = gql`
+  query GetAdminStats {
+    adminStats {
+      totalUsers
+      totalDeposits
+      totalWithdrawals
+      pendingWithdrawals
+    }
+  }
+`;
+
+export const GET_ADMIN_USERS = gql`
+  query GetAdminUsers {
+    adminUsers {
+      id
+      email
+      fullName
+      role
+      balance
+      createdAt
+    }
+  }
+`;
+
+export const GET_ADMIN_DEPOSITS = gql`
+  query GetAdminDeposits {
+    adminDeposits {
+      id
+      amount
+      txHash
+      status
+      createdAt
+      user {
+        email
+        fullName
+      }
+    }
+  }
+`;
+
+export const GET_ADMIN_WITHDRAWALS = gql`
+  query GetAdminWithdrawals {
+    adminWithdrawals {
+      id
+      amount
+      fee
+      walletAddress
+      status
+      createdAt
+      user {
+        email
+        fullName
+      }
+    }
+  }
+`;
+
+export const GET_ADMIN_CHATS = gql`
+  query GetAdminChats {
+    adminChats {
+      id
+      status
+      updatedAt
+      user {
+        email
+        fullName
+      }
+      messages {
+        id
+        content
+        senderRole
+        read
+        createdAt
+      }
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_WITHDRAWAL = gql`
+  mutation AdminUpdateWithdrawal($id: ID!, $status: String!, $txHash: String) {
+    adminUpdateWithdrawalStatus(id: $id, status: $status, txHash: $txHash) {
+      id
+      status
+      txHash
+    }
+  }
+`;
+
+export const ADMIN_REPLY_CHAT = gql`
+  mutation AdminReplyChat($chatId: ID!, $content: String!) {
+    adminReplyChat(chatId: $chatId, content: $content) {
+      id
+      content
+      senderRole
+      createdAt
+    }
+  }
+`;
+
+export const ADMIN_CLOSE_CHAT = gql`
+  mutation AdminCloseChat($chatId: ID!) {
+    adminCloseChat(chatId: $chatId) {
+      id
+      status
+    }
+  }
+`;
+
+export const GET_ADMIN_INVESTMENTS = gql`
+  query GetAdminInvestments {
+    adminInvestments {
+      id
+      amount
+      durationMonths
+      startDate
+      endDate
+      status
+      user {
+        email
+        fullName
+      }
+    }
+  }
+`;
+
+export const ADMIN_UPDATE_USER = gql`
+  mutation AdminUpdateUser($id: ID!, $input: AdminUpdateUserInput!) {
+    adminUpdateUser(id: $id, input: $input) {
+      id
+      email
+      fullName
+      role
+      balance
+    }
+  }
+`;

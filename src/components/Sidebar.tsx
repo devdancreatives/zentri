@@ -34,36 +34,39 @@ const SidebarContent: React.FC<{
     setMobileMenuOpen: (open: boolean) => void
     handleSignOut: () => void
 }> = ({ navItems, pathname, setMobileMenuOpen, handleSignOut }) => (
-    <>
-        <div>
-            <div className="mb-8 flex items-center gap-2 px-2">
-                <div className="h-8 w-8 rounded-full bg-linear-to-br from-yellow-400 to-yellow-600 shadow-lg shadow-yellow-500/50" />
-                <span className="text-lg font-bold bg-linear-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">Zentrivest</span>
-            </div>
-            <nav className="flex flex-col gap-1">
-                {navItems.map((item) => {
-                    const Icon = item.icon
-                    const isActive = pathname === item.href
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={cn(
-                                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
-                                isActive
-                                    ? 'bg-linear-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-500 shadow-lg shadow-yellow-500/10'
-                                    : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white hover:translate-x-1'
-                            )}
-                        >
-                            <Icon size={20} />
-                            {item.name}
-                        </Link>
-                    )
-                })}
-            </nav>
+    <div className="flex flex-col h-full w-full relative">
+        {/* Header */}
+        <div className="pt-16 lg:pt-4 px-4 mb-6 flex items-center gap-2 shrink-0">
+            <div className="h-8 w-8 rounded-full bg-linear-to-br from-yellow-400 to-yellow-600 shadow-lg shadow-yellow-500/50" />
+            <span className="text-lg font-bold bg-linear-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">Zentrivest</span>
         </div>
-        <div>
+
+        {/* Navigation - Added large padding bottom to prevent overlap with absolute footer */}
+        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto min-h-0 px-3 pb-32 scrollbar-none">
+            {navItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+                return (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                            isActive
+                                ? 'bg-linear-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-500 shadow-lg shadow-yellow-500/10'
+                                : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white hover:translate-x-1'
+                        )}
+                    >
+                        <Icon size={20} />
+                        {item.name}
+                    </Link>
+                )
+            })}
+        </nav>
+
+        {/* Footer - Fixed positioning to ensure visibility above everything */}
+        <div className="fixed bottom-0 left-0 w-64 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] bg-linear-to-t from-zinc-950 via-zinc-950/95 to-zinc-950/0 backdrop-blur-sm z-50 border-r border-zinc-800">
             <button
                 onClick={handleSignOut}
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200"
@@ -72,7 +75,7 @@ const SidebarContent: React.FC<{
                 Sign Out
             </button>
         </div>
-    </>
+    </div>
 )
 
 export function Sidebar() {
@@ -113,7 +116,7 @@ export function Sidebar() {
 
             {/* Sidebar */}
             <div className={cn(
-                "fixed lg:static inset-y-0 left-0 z-40 flex h-screen w-64 flex-col justify-between border-r border-zinc-800 bg-zinc-950 p-4 text-white transition-transform duration-300",
+                "fixed lg:static inset-y-0 left-0 z-40 flex h-[100dvh] w-64 flex-col border-r border-zinc-800 bg-zinc-950 text-white transition-transform duration-300 overflow-hidden",
                 mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
             )}>
                 <SidebarContent
