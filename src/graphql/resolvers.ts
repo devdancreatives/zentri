@@ -1128,5 +1128,17 @@ export const resolvers = {
 
       return true;
     },
+    testPushNotification: async (_: any, __: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      await sendPushNotification(user.id, {
+        title: "Test Notification",
+        body: "This is a test notification from Zentrivest to verify your device works.",
+      });
+
+      return true;
+    },
   },
 };

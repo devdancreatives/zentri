@@ -176,5 +176,6 @@ export const typeDefs = `
     
     # Push Notifications
     savePushSubscription(endpoint: String!, authKey: String!, p256dhKey: String!): Boolean
+    testPushNotification: Boolean
   }
 `;

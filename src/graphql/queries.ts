@@ -197,6 +197,12 @@ export const REQUEST_OTP = gql`
   }
 `;
 
+export const TEST_PUSH_NOTIFICATION = gql`
+  mutation TestPushNotification {
+    testPushNotification
+  }
+`;
+
 // Combined query for dashboard page
 export const GET_DASHBOARD_DATA = gql`
   query GetDashboardData {
