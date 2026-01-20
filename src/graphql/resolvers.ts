@@ -1136,10 +1136,14 @@ export const resolvers = {
 
       return true;
     },
-    testPushNotification: async (_: any, __: any, context: any) => {
+    testPushNotification: async (_: any, { delay }: any, context: any) => {
       const client = getClient(context);
       const user = await getUser(client);
       if (!user) throw new Error("Unauthorized");
+
+      if (delay) {
+        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+      }
 
       const result = await sendPushNotification(user.id, {
         title: "Test Notification",

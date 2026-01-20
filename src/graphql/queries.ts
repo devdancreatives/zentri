@@ -198,8 +198,8 @@ export const REQUEST_OTP = gql`
 `;
 
 export const TEST_PUSH_NOTIFICATION = gql`
-  mutation TestPushNotification {
-    testPushNotification
+  mutation TestPushNotification($delay: Int) {
+    testPushNotification(delay: $delay)
   }
 `;
 

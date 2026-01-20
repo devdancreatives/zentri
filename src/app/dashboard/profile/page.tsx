@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@apollo/client/react'
-import { User as UserIcon, Mail, Loader2, Check, Bell } from 'lucide-react'
+import { User as UserIcon, Mail, Loader2, Check, Bell, BellOff } from 'lucide-react'
 import { GET_ME, UPDATE_PROFILE, TEST_PUSH_NOTIFICATION } from '@/graphql/queries'
 import { toast } from 'sonner'
 
@@ -133,15 +133,26 @@ export default function ProfilePage() {
                             )}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => testPush()}
-                            disabled={sendingPush}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10 transition-colors text-sm font-medium"
-                        >
-                            {sendingPush ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
-                            Test Notification
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => testPush()}
+                                disabled={sendingPush}
+                                className="inline-flex items-center gap-2 rounded-lg bg-yellow-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-yellow-700 disabled:opacity-50"
+                            >
+                                {sendingPush ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+                                Test Notification
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => testPush({ variables: { delay: 5 } })}
+                                disabled={sendingPush}
+                                className="inline-flex items-center gap-2 rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
+                            >
+                                {sendingPush ? <Loader2 className="h-4 w-4 animate-spin" /> : <BellOff className="h-4 w-4" />}
+                                Test Background (5s)
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
