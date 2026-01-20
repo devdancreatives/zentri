@@ -10,7 +10,7 @@ import { usePushNotifications } from '@/hooks/use-push-notifications'
 
 export default function SettingsPage() {
     const router = useRouter()
-    const { isSubscribed, subscribeToPush, unsubscribeFromPush, permission } = usePushNotifications()
+    const { isSubscribed, subscribeToPush, unsubscribeFromPush, requestPermission, permission } = usePushNotifications()
     const [notifications, setNotifications] = useState({
         email: true,
         weekly: true,
@@ -97,21 +97,31 @@ export default function SettingsPage() {
                                 <p className="font-medium text-white">Push Notifications</p>
                                 <p className="text-sm text-zinc-400">
                                     {permission === 'denied'
-                                        ? 'Permission denied. Please enable in browser settings.'
-                                        : 'Receive push notifications on this device'}
+                                        ? 'Notifications Blocked. Please reset in Device Settings.'
+                                        : permission === 'default'
+                                            ? 'Enable to receive updates'
+                                            : 'Receive push notifications on this device'}
                                 </p>
                             </div>
                             <button
                                 onClick={async () => {
-                                    if (permission === 'denied') return
+                                    if (permission === 'denied') {
+                                        alert("Please enable notifications for this app in your device/browser settings.")
+                                        return
+                                    }
+
+                                    if (permission === 'default') {
+                                        const result = await requestPermission?.()
+                                        if (result !== 'granted') return
+                                    }
+
                                     if (isSubscribed) {
                                         await unsubscribeFromPush()
                                     } else {
                                         await subscribeToPush()
                                     }
                                 }}
-                                disabled={permission === 'denied'}
-                                className={`relative w-12 h-6 rounded-full transition-all ${isSubscribed ? 'bg-yellow-500' : 'bg-zinc-700'} ${permission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`relative w-12 h-6 rounded-full transition-all ${isSubscribed ? 'bg-yellow-500' : 'bg-zinc-700'} ${permission === 'denied' ? 'opacity-50' : ''}`}
                             >
                                 <div
                                     className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${isSubscribed ? 'translate-x-6' : ''}`}

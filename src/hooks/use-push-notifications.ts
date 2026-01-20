@@ -99,6 +99,16 @@ export function usePushNotifications() {
     }
   };
 
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default",
+  );
+
+  useEffect(() => {
+    if (typeof Notification !== "undefined") {
+      setPermission(Notification.permission);
+    }
+  }, []);
+
   const unsubscribeFromPush = async () => {
     if (!subscription) return;
 
@@ -112,11 +122,22 @@ export function usePushNotifications() {
     }
   };
 
+  const requestPermission = async () => {
+    if (typeof Notification === "undefined") return;
+    const result = await Notification.requestPermission();
+    setPermission(result);
+    return result;
+  };
+
   return {
     isSubscribed,
     subscribeToPush,
     unsubscribeFromPush,
-    permission:
-      typeof Notification !== "undefined" ? Notification.permission : "default",
+    requestPermission,
+    permission,
+    isSupported:
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window,
   };
 }
