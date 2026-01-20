@@ -1092,18 +1092,21 @@ export const resolvers = {
       const user = await getUser(client);
       if (!user) throw new Error("Unauthorized");
 
-      // Check if exists
-      const { data: existing } = await client
+      const serviceClient = getServiceClient();
+
+      // Check if exists (globally, using service client)
+      const { data: existing } = await serviceClient
         .from("push_subscriptions")
         .select("id")
         .eq("endpoint", endpoint)
         .single();
 
       if (existing) {
-        // Update keys if they changed
-        const { error } = await client
+        // Update keys and OWNER if they changed (transfer ownership to current user)
+        const { error } = await serviceClient
           .from("push_subscriptions")
           .update({
+            user_id: user.id, // Ensure current user owns this endpoint
             auth_key: authKey,
             p256dh_key: p256dhKey,
             updated_at: new Date().toISOString(),
@@ -1112,12 +1115,14 @@ export const resolvers = {
         if (error) throw new Error(error.message);
       } else {
         // Insert
-        const { error } = await client.from("push_subscriptions").insert({
-          user_id: user.id,
-          endpoint,
-          auth_key: authKey,
-          p256dh_key: p256dhKey,
-        });
+        const { error } = await serviceClient
+          .from("push_subscriptions")
+          .insert({
+            user_id: user.id,
+            endpoint,
+            auth_key: authKey,
+            p256dh_key: p256dhKey,
+          });
         if (error) throw new Error(error.message);
       }
 
