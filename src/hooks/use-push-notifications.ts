@@ -46,16 +46,28 @@ export function usePushNotifications() {
       "serviceWorker" in navigator &&
       "PushManager" in window
     ) {
-      // Register SW if not already (it should be by next-pwa, but we can get registration)
-      navigator.serviceWorker.ready.then((reg) => {
-        setRegistration(reg);
-        reg.pushManager.getSubscription().then((sub) => {
-          if (sub) {
-            setSubscription(sub);
-            setIsSubscribed(true);
+      // Try to register SW manually if it's not already, since PWA might be disabled in dev
+      const registerSW = async () => {
+        try {
+          let reg = await navigator.serviceWorker.getRegistration();
+          if (!reg) {
+            reg = await navigator.serviceWorker.register("/push-sw.js");
           }
-        });
-      });
+
+          if (reg) {
+            setRegistration(reg);
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) {
+              setSubscription(sub);
+              setIsSubscribed(true);
+            }
+          }
+        } catch (e) {
+          console.error("SW registration failed", e);
+        }
+      };
+
+      registerSW();
     }
   }, []);
 
