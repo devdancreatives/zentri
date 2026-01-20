@@ -33,6 +33,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  experimental: {
+    serverComponentsExternalPackages: ["tiny-secp256k1"],
+  },
+  webpack: (config) => {
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+    };
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
