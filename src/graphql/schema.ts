@@ -173,5 +173,8 @@ export const typeDefs = `
     adminReplyChat(chatId: ID!, content: String!): ChatMessage
     adminCloseChat(chatId: ID!): Chat
     adminUpdateUser(id: ID!, input: AdminUpdateUserInput!): User
+    
+    # Push Notifications
+    savePushSubscription(endpoint: String!, authKey: String!, p256dhKey: String!): Boolean
   }
 `;

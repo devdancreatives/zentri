@@ -4,6 +4,8 @@ import { Sidebar } from '@/components/Sidebar'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
+import { PwaInstallPrompt } from '@/components/pwa-install-prompt'
 
 export default function DashboardLayout({
     children,
@@ -12,6 +14,8 @@ export default function DashboardLayout({
 }) {
     const { user, loading } = useAuth()
     const router = useRouter()
+
+    useRealtimeNotifications(user?.id)
 
     useEffect(() => {
         if (!loading && !user) {
@@ -37,6 +41,7 @@ export default function DashboardLayout({
                     {children}
                 </div>
             </main>
+            <PwaInstallPrompt />
         </div>
     )
 }

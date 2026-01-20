@@ -27,6 +27,31 @@ const baseNavItems = [
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
+import { Bell, BellOff } from 'lucide-react'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
+
+function NotificationToggle() {
+    const { isSubscribed, subscribeToPush, permission } = usePushNotifications()
+
+    if (permission === 'denied') return null
+
+    return (
+        <button
+            onClick={subscribeToPush}
+            disabled={isSubscribed}
+            className={cn(
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                isSubscribed
+                    ? 'text-zinc-500 cursor-default'
+                    : 'text-yellow-500 hover:bg-yellow-500/10'
+            )}
+        >
+            {isSubscribed ? <Bell size={20} /> : <BellOff size={20} />}
+            {isSubscribed ? 'Notifications On' : 'Enable Notifications'}
+        </button>
+    )
+}
+
 // Component defined outside to avoid recreation on each render
 const SidebarContent: React.FC<{
     navItems: typeof baseNavItems
@@ -65,6 +90,11 @@ const SidebarContent: React.FC<{
             })}
         </nav>
 
+        {/* Notifications Toggle */}
+        <div className="px-3 pb-2 z-50">
+            <NotificationToggle />
+        </div>
+
         {/* Footer - Fixed positioning to ensure visibility above everything */}
         <div className="fixed bottom-0 left-0 w-64 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] bg-linear-to-t from-zinc-950 via-zinc-950/95 to-zinc-950/0 backdrop-blur-sm z-50 border-r border-zinc-800">
             <button
@@ -75,7 +105,7 @@ const SidebarContent: React.FC<{
                 Sign Out
             </button>
         </div>
-    </div>
+    </div >
 )
 
 export function Sidebar() {

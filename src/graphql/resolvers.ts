@@ -2,6 +2,7 @@ import { createAuthenticatedClient, supabase } from "@/lib/supabase";
 import { getBscAddress } from "@/lib/wallet";
 import { sendOtpEmail } from "@/lib/email";
 import { createClient } from "@supabase/supabase-js";
+import { sendPushNotification } from "@/lib/push-notifications";
 
 const getClient = (context: any) => {
   // Handle both standard Request (App Router) and NextApiRequest (Pages Router)
@@ -366,6 +367,74 @@ export const resolvers = {
         pendingWithdrawals: pendingWithdrawals || 0,
       };
     },
+    adminUpdateUser: async (_: any, { id, input }: any, context: any) => {
+      const client = getClient(context);
+
+      // Check if admin
+      const {
+        data: { user },
+      } = await client.auth.getUser();
+      const { data: userData } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+
+      if (userData?.role !== "admin") {
+        throw new Error("Unauthorized");
+      }
+
+      const { data, error } = await client
+        .from("users")
+        .update(input)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      return data;
+    },
+    savePushSubscription: async (
+      _: any,
+      { endpoint, authKey, p256dhKey }: any,
+      context: any,
+    ) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // Check if exists
+      const { data: existing } = await client
+        .from("push_subscriptions")
+        .select("id")
+        .eq("endpoint", endpoint)
+        .single();
+
+      if (existing) {
+        // Update keys if they changed (unlikely for same endpoint but good practice)
+        const { error } = await client
+          .from("push_subscriptions")
+          .update({
+            auth_key: authKey,
+            p256dh_key: p256dhKey,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (error) throw new Error(error.message);
+      } else {
+        // Insert
+        const { error } = await client.from("push_subscriptions").insert({
+          user_id: user.id,
+          endpoint,
+          auth_key: authKey,
+          p256dh_key: p256dhKey,
+        });
+        if (error) throw new Error(error.message);
+      }
+
+      return true;
+    },
     adminUsers: async (_: any, __: any, context: any) => {
       const client = getClient(context);
       const user = await getUser(client);
@@ -595,6 +664,14 @@ export const resolvers = {
         .single();
 
       if (error) throw new Error(error.message);
+
+      // Send Push Notification
+      await sendPushNotification(user.id, {
+        title: "Investment Active",
+        body: `Your investment of $${amount} for ${durationMonths} months is now active.`,
+        url: "/dashboard/invest",
+      });
+
       return data;
     },
     simulateDeposit: async (_: any, { amount, txHash }: any, context: any) => {
@@ -734,6 +811,16 @@ export const resolvers = {
         .single();
 
       if (error) throw new Error(error.message);
+
+      // Notify User
+      if (data) {
+        await sendPushNotification(data.user_id, {
+          title: `Withdrawal ${status === "processed" ? "Processed" : "Updated"}`,
+          body: `Your withdrawal of $${data.amount} has been ${status}.`,
+          url: "/dashboard/wallet",
+        });
+      }
+
       return data;
     },
     adminReplyChat: async (_: any, { chatId, content }: any, context: any) => {
@@ -767,6 +854,22 @@ export const resolvers = {
         .from("chats")
         .update({ updated_at: new Date().toISOString(), status: "answered" })
         .eq("id", chatId);
+
+      // Notify User
+      const { data: chat } = await serviceClient
+        .from("chats")
+        .select("user_id")
+        .eq("id", chatId)
+        .single();
+
+      if (chat) {
+        await sendPushNotification(chat.user_id, {
+          title: "New Support Message",
+          body:
+            content.length > 50 ? content.substring(0, 50) + "..." : content,
+          url: `/dashboard/chat`,
+        });
+      }
 
       return message;
     },
@@ -927,6 +1030,14 @@ export const resolvers = {
         .single();
 
       if (error) throw new Error(error.message);
+
+      // Notify User (Confirmation)
+      await sendPushNotification(user.id, {
+        title: "Withdrawal Requested",
+        body: `Your request to withdraw $${amount} has been received.`,
+        url: "/dashboard/wallet",
+      });
+
       return data;
     },
 
@@ -1038,6 +1149,46 @@ export const resolvers = {
 
       if (error) throw new Error(error.message);
       return data;
+    },
+    savePushSubscription: async (
+      _: any,
+      { endpoint, authKey, p256dhKey }: any,
+      context: any,
+    ) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      // Check if exists
+      const { data: existing } = await client
+        .from("push_subscriptions")
+        .select("id")
+        .eq("endpoint", endpoint)
+        .single();
+
+      if (existing) {
+        // Update keys if they changed
+        const { error } = await client
+          .from("push_subscriptions")
+          .update({
+            auth_key: authKey,
+            p256dh_key: p256dhKey,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (error) throw new Error(error.message);
+      } else {
+        // Insert
+        const { error } = await client.from("push_subscriptions").insert({
+          user_id: user.id,
+          endpoint,
+          auth_key: authKey,
+          p256dh_key: p256dhKey,
+        });
+        if (error) throw new Error(error.message);
+      }
+
+      return true;
     },
   },
 };

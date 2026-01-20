@@ -9,6 +9,7 @@ import {
   type BscScanTransaction,
 } from "./bsc";
 import { sendDepositNotification } from "./email";
+import { sendPushNotification } from "./push-notifications";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -181,6 +182,13 @@ async function processDeposit(
         parsedTx.txHash,
       );
     }
+
+    // Send Push Notification
+    await sendPushNotification(userId, {
+      title: "Deposit Confirmed",
+      body: `Your deposit of $${amount} USDT has been confirmed.`,
+      url: "/dashboard/wallet",
+    });
 
     console.log(`✅ Processed deposit: ${amount} USDT for user ${userId}`);
     return true;
