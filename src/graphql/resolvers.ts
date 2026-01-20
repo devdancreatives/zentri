@@ -1133,10 +1133,14 @@ export const resolvers = {
       const user = await getUser(client);
       if (!user) throw new Error("Unauthorized");
 
-      await sendPushNotification(user.id, {
+      const result = await sendPushNotification(user.id, {
         title: "Test Notification",
         body: "This is a test notification from Zentrivest to verify your device works.",
       });
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
 
       return true;
     },

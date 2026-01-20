@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useMutation } from '@apollo/client/react'
 import { CHANGE_PASSWORD } from '@/graphql/queries'
 import { supabase } from '@/lib/supabase'
+import { usePushNotifications } from '@/hooks/use-push-notifications'
 
 export default function SettingsPage() {
     const router = useRouter()
+    const { isSubscribed, subscribeToPush, unsubscribeFromPush, permission } = usePushNotifications()
     const [notifications, setNotifications] = useState({
         email: true,
-        push: false,
         weekly: true,
     })
 
@@ -94,16 +95,26 @@ export default function SettingsPage() {
                         <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-800/30 border border-zinc-700/50 hover:border-zinc-600/50 transition-all">
                             <div>
                                 <p className="font-medium text-white">Push Notifications</p>
-                                <p className="text-sm text-zinc-400">Receive push notifications</p>
+                                <p className="text-sm text-zinc-400">
+                                    {permission === 'denied'
+                                        ? 'Permission denied. Please enable in browser settings.'
+                                        : 'Receive push notifications on this device'}
+                                </p>
                             </div>
                             <button
-                                onClick={() => setNotifications({ ...notifications, push: !notifications.push })}
-                                className={`relative w-12 h-6 rounded-full transition-all ${notifications.push ? 'bg-yellow-500' : 'bg-zinc-700'
-                                    }`}
+                                onClick={async () => {
+                                    if (permission === 'denied') return
+                                    if (isSubscribed) {
+                                        await unsubscribeFromPush()
+                                    } else {
+                                        await subscribeToPush()
+                                    }
+                                }}
+                                disabled={permission === 'denied'}
+                                className={`relative w-12 h-6 rounded-full transition-all ${isSubscribed ? 'bg-yellow-500' : 'bg-zinc-700'} ${permission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <div
-                                    className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${notifications.push ? 'translate-x-6' : ''
-                                        }`}
+                                    className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${isSubscribed ? 'translate-x-6' : ''}`}
                                 />
                             </button>
                         </div>

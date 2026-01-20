@@ -31,18 +31,25 @@ import { Bell, BellOff } from 'lucide-react'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 
 function NotificationToggle() {
-    const { isSubscribed, subscribeToPush, permission } = usePushNotifications()
+    const { isSubscribed, subscribeToPush, unsubscribeFromPush, permission } = usePushNotifications()
 
     if (permission === 'denied') return null
 
+    const handleToggle = async () => {
+        if (isSubscribed) {
+            await unsubscribeFromPush()
+        } else {
+            await subscribeToPush()
+        }
+    }
+
     return (
         <button
-            onClick={subscribeToPush}
-            disabled={isSubscribed}
+            onClick={handleToggle}
             className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
                 isSubscribed
-                    ? 'text-zinc-500 cursor-default'
+                    ? 'text-zinc-500 hover:text-red-400 hover:bg-red-500/10'
                     : 'text-yellow-500 hover:bg-yellow-500/10'
             )}
         >

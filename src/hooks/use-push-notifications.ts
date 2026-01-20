@@ -99,9 +99,23 @@ export function usePushNotifications() {
     }
   };
 
+  const unsubscribeFromPush = async () => {
+    if (!subscription) return;
+
+    try {
+      await subscription.unsubscribe();
+      setSubscription(null);
+      setIsSubscribed(false);
+      console.log("Unsubscribed from push");
+    } catch (error) {
+      console.error("Failed to unsubscribe", error);
+    }
+  };
+
   return {
     isSubscribed,
     subscribeToPush,
+    unsubscribeFromPush,
     permission:
       typeof Notification !== "undefined" ? Notification.permission : "default",
   };
