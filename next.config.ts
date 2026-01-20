@@ -13,15 +13,11 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 });
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ["tiny-secp256k1"],
-  },
-  webpack: (config) => {
-    config.experiments = {
-      ...config.experiments,
-      asyncWebAssembly: true,
-    };
-    return config;
+  outputFileTracingIncludes: {
+    "/api/graphql": [
+      "./node_modules/tiny-secp256k1/**/*",
+      "./node_modules/tiny-secp256k1/lib/secp256k1.wasm",
+    ],
   },
 };
 
