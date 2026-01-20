@@ -108,12 +108,17 @@ const SidebarContent: React.FC<{
     </div >
 )
 
+import { useAuth } from '@/lib/auth-context'
+
 export function Sidebar() {
     const pathname = usePathname()
     const router = useRouter()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const { session, loading } = useAuth()
 
-    const { data } = useQuery<any>(GET_ME)
+    const { data } = useQuery<any>(GET_ME, {
+        skip: loading || !session
+    })
     const userRole = data?.me?.role || 'user'
 
     const handleSignOut = async () => {
