@@ -367,74 +367,7 @@ export const resolvers = {
         pendingWithdrawals: pendingWithdrawals || 0,
       };
     },
-    adminUpdateUser: async (_: any, { id, input }: any, context: any) => {
-      const client = getClient(context);
 
-      // Check if admin
-      const {
-        data: { user },
-      } = await client.auth.getUser();
-      const { data: userData } = await client
-        .from("users")
-        .select("role")
-        .eq("id", user?.id)
-        .single();
-
-      if (userData?.role !== "admin") {
-        throw new Error("Unauthorized");
-      }
-
-      const { data, error } = await client
-        .from("users")
-        .update(input)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return data;
-    },
-    savePushSubscription: async (
-      _: any,
-      { endpoint, authKey, p256dhKey }: any,
-      context: any,
-    ) => {
-      const client = getClient(context);
-      const user = await getUser(client);
-      if (!user) throw new Error("Unauthorized");
-
-      // Check if exists
-      const { data: existing } = await client
-        .from("push_subscriptions")
-        .select("id")
-        .eq("endpoint", endpoint)
-        .single();
-
-      if (existing) {
-        // Update keys if they changed (unlikely for same endpoint but good practice)
-        const { error } = await client
-          .from("push_subscriptions")
-          .update({
-            auth_key: authKey,
-            p256dh_key: p256dhKey,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-        if (error) throw new Error(error.message);
-      } else {
-        // Insert
-        const { error } = await client.from("push_subscriptions").insert({
-          user_id: user.id,
-          endpoint,
-          auth_key: authKey,
-          p256dh_key: p256dhKey,
-        });
-        if (error) throw new Error(error.message);
-      }
-
-      return true;
-    },
     adminUsers: async (_: any, __: any, context: any) => {
       const client = getClient(context);
       const user = await getUser(client);
