@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { gql, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
+import { gql } from "@apollo/client";
 
 const SAVE_SUBSCRIPTION = gql`
   mutation SavePushSubscription(
