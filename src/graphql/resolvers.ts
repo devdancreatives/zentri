@@ -747,11 +747,15 @@ export const resolvers = {
 
       // Notify User
       if (data) {
-        await sendPushNotification(data.user_id, {
+        const pushResult = await sendPushNotification(data.user_id, {
           title: `Withdrawal ${status === "processed" ? "Processed" : "Updated"}`,
           body: `Your withdrawal of $${data.amount} has been ${status}.`,
           url: "/dashboard/wallet",
         });
+        console.log(
+          `Withdrawal Push Result for user ${data.user_id}:`,
+          pushResult,
+        );
       }
 
       return data;
@@ -796,12 +800,16 @@ export const resolvers = {
         .single();
 
       if (chat) {
-        await sendPushNotification(chat.user_id, {
+        const pushResult = await sendPushNotification(chat.user_id, {
           title: "New Support Message",
           body:
             content.length > 50 ? content.substring(0, 50) + "..." : content,
           url: `/dashboard/chat`,
         });
+        console.log(
+          `Chat Reply Push Result for user ${chat.user_id}:`,
+          pushResult,
+        );
       }
 
       return message;
