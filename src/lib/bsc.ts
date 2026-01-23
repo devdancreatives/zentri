@@ -40,7 +40,7 @@ export async function getWalletTransactions(
     const apiKeyParam = process.env.BSCSCAN_API_KEY
       ? `&apikey=${process.env.BSCSCAN_API_KEY}`
       : "";
-    const url = `${BSCSCAN_API_URL}?module=account&action=tokentx&contractaddress=${USDT_CONTRACT}&address=${address}&page=1&offset=${limit}&sort=desc${apiKeyParam}`;
+    const url = `${BSCSCAN_API_URL}?module=account&action=tokentx&address=${address}&page=1&offset=${limit}&sort=desc${apiKeyParam}`;
 
     const response = await fetch(url);
 

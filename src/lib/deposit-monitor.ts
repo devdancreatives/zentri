@@ -77,6 +77,9 @@ async function checkWalletDeposits(
   for (const tx of transactions) {
     // Verify it's a valid USDT deposit
     if (!verifyUSDTTransaction(tx, address)) {
+      console.log(
+        `Skipping tx ${tx.hash.substring(0, 10)}... - Not valid USDT (Contract: ${tx.contractAddress}, Symbol: ${tx.tokenSymbol})`,
+      );
       continue;
     }
 
