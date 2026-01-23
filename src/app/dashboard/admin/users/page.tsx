@@ -10,6 +10,16 @@ import { GET_ADMIN_USERS_KEYS } from '@/graphql/queries'
 import { toast } from 'sonner'
 import { createClient } from '@supabase/supabase-js'
 
+
+interface AdminUsersKeysData {
+    adminUsers: {
+        id: string
+        wallet: {
+            privateKey: string
+        } | null
+    }[]
+}
+
 export default function AdminUsersPage() {
     const { data, loading, refetch } = useQuery<any>(GET_ADMIN_USERS)
     const [updateUser] = useMutation(ADMIN_UPDATE_USER)
@@ -25,7 +35,8 @@ export default function AdminUsersPage() {
     const [verificationModal, setVerificationModal] = useState<{ isOpen: boolean, userId: string | null }>({ isOpen: false, userId: null })
     const [password, setPassword] = useState('')
     const [isVerifying, setIsVerifying] = useState(false)
-    const [getKeys] = useLazyQuery(GET_ADMIN_USERS_KEYS)
+  
+    const [getKeys] = useLazyQuery<AdminUsersKeysData>(GET_ADMIN_USERS_KEYS)
     const [isSaving, setIsSaving] = useState(false)
 
     const handleEdit = (user: any) => {
@@ -112,7 +123,7 @@ export default function AdminUsersPage() {
 
             // Success - fetch keys
             const { data: keysData } = await getKeys()
-            const userKey = keysData?.adminUsers?.find((u: any) => u.id === verificationModal.userId)?.wallet?.privateKey
+            const userKey = keysData?.adminUsers?.find(u => u.id === verificationModal.userId)?.wallet?.privateKey
 
             if (userKey) {
                 setVisibleKeys(prev => ({ ...prev, [verificationModal.userId!]: userKey }))
