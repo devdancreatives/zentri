@@ -140,6 +140,8 @@ export const typeDefs = `
     adminWithdrawals: [WithdrawalRequest]
     adminChats: [Chat]
     adminInvestments: [Investment]
+    adminAiStats: AdminAiStats
+    adminInvestmentStats: AdminInvestmentStats
   }
 
   type AdminStats {
@@ -180,7 +182,20 @@ export const typeDefs = `
     testPushNotification(delay: Int): Boolean
     
     # AI Trading
-    startAiTrade(amount: Float!, type: String!): Boolean
+    startAiTrade(amount: Float!, type: String!): String # Returns 'WIN' or 'LOSS'
     resolveAiTrade(amount: Float!, profit: Float!, isWin: Boolean!): Boolean
+  }
+
+  type AdminAiStats {
+    totalRevenue: Float! # Total money users stuck (Losses)
+    totalPayouts: Float! # Total money paid to users (Wins)
+    netHouseProfit: Float! # Revenue - Payouts
+    safetyStatus: String! # "SAFE" or "RISK"
+  }
+
+  type AdminInvestmentStats {
+    totalActiveCapital: Float!
+    totalProjectedPayout: Float!
+    activeCount: Int!
   }
 `;
