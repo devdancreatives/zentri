@@ -58,7 +58,7 @@ export const getTronAddress = async (
 export const getBscAddress = async (
   mnemonic: string,
   index: number,
-): Promise<{ address: string; path: string }> => {
+): Promise<{ address: string; privateKey: string; path: string }> => {
   if (!mnemonic) throw new Error("Mnemonic is required");
 
   // Validate mnemonic
@@ -79,5 +79,5 @@ export const getBscAddress = async (
     Buffer.from(child.privateKey).toString("hex"),
   );
 
-  return { address: wallet.address, path };
+  return { address: wallet.address, privateKey: wallet.privateKey, path };
 };

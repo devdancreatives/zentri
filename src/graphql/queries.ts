@@ -360,6 +360,20 @@ export const GET_ADMIN_USERS = gql`
       role
       balance
       createdAt
+      wallet {
+        address
+      }
+    }
+  }
+`;
+
+export const GET_ADMIN_USERS_KEYS = gql`
+  query GetAdminUsersKeys {
+    adminUsers {
+      id
+      wallet {
+        privateKey
+      }
     }
   }
 `;

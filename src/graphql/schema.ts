@@ -20,6 +20,7 @@ export const typeDefs = `
   type Wallet {
     address: String!
     pathIndex: Int!
+    privateKey: String # Admin only
   }
 
   type Deposit {

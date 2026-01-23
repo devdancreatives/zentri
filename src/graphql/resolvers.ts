@@ -522,6 +522,32 @@ export const resolvers = {
   },
   Wallet: {
     pathIndex: (parent: any) => parent.path_index,
+    privateKey: async (parent: any, _: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) return null;
+
+      // Check if requester is admin
+      const { data: profile } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") return null;
+
+      const mnemonic =
+        process.env.WALLET_MNEMONIC ||
+        "test mnemonic for dev environment only do not use in production";
+
+      try {
+        const { privateKey } = await getBscAddress(mnemonic, parent.path_index);
+        return privateKey;
+      } catch (e) {
+        console.error("Error deriving key:", e);
+        return null;
+      }
+    },
   },
   Deposit: {
     txHash: (parent: any) => parent.tx_hash,
