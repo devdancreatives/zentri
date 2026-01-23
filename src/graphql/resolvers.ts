@@ -565,54 +565,6 @@ export const resolvers = {
     },
 
     // End of New Admin Resolvers
-
-    adminInvestmentStats: async (_: any, __: any, context: any) => {
-      const client = getClient(context);
-      const user = await getUser(client);
-
-      const { data: profile } = await client
-        .from("users")
-        .select("role")
-        .eq("id", user?.id)
-        .single();
-      if (profile?.role !== "admin") throw new Error("Admin only");
-
-      const serviceClient = getServiceClient();
-
-      const { data: investments } = await serviceClient
-        .from("investments")
-        .select("amount, duration_months, start_date")
-        .eq("status", "active");
-
-      if (!investments)
-        return {
-          totalActiveCapital: 0,
-          totalProjectedPayout: 0,
-          activeCount: 0,
-        };
-
-      const totalActiveCapital = investments.reduce(
-        (sum: number, inv: any) => sum + inv.amount,
-        0,
-      );
-
-      // Projected Payout = Capital + (Capital * ROI * period)?
-      // NOTE: The ROI distribution is manual (adminDistributeProfit).
-      // But usually there is an expected ROI or at least the Capital obligation.
-      // For "Projected Payout", let's assume Capital is the liability.
-      // If we want to include "Projected Profit", we'd need a target ROI.
-      // Since ROI is variable/manual, let's just track Capital obligation for now,
-      // OR add an estimated 10% profit buffer?
-      // User asked "how much needs to be paid out". Without a fixed rate, this strictly means Principals.
-      // Let's return Principal for now.
-      const totalProjectedPayout = totalActiveCapital;
-
-      return {
-        totalActiveCapital,
-        totalProjectedPayout,
-        activeCount: investments.length,
-      };
-    },
   },
   Chat: {
     userId: (parent: any) => parent.user_id,

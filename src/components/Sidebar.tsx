@@ -135,7 +135,11 @@ export function Sidebar() {
     }
 
     const navItems = userRole === 'admin'
-        ? [...baseNavItems, { name: 'Admin', href: '/dashboard/admin', icon: Shield }]
+        ? [
+            ...baseNavItems,
+            { name: 'Admin Users', href: '/dashboard/admin', icon: Shield },
+            { name: 'House Profit', href: '/dashboard/admin/ai-trading', icon: TrendingUp }
+        ]
         : baseNavItems
 
     return (
