@@ -30,37 +30,73 @@ interface ProcessedTransaction {
 /**
  * Fetch recent BEP20 transactions for a wallet address from BscScan
  */
+/**
+ * Fetch recent BEP20 transactions for a wallet address from RPC (ethers)
+ * This replaces the paid BscScan API.
+ */
 export async function getWalletTransactions(
   address: string,
-  limit: number = 20,
+  _limit: number = 20, // limit is less relevant for block range, but we keep signature
 ): Promise<BscScanTransaction[]> {
   try {
-    // Note: In production, you should use an API key for higher rate limits
-    // &apikey=YourApiKeyToken
-    const apiKeyParam = process.env.BSCSCAN_API_KEY
-      ? `&apikey=${process.env.BSCSCAN_API_KEY}`
-      : "";
-    const url = `${BSCSCAN_API_URL}?chainid=56&module=account&action=tokentx&address=${address}&page=1&offset=${limit}&sort=desc${apiKeyParam}`;
+    const provider = new ethers.JsonRpcProvider(
+      "https://bsc-dataseed.binance.org/",
+    );
 
-    const response = await fetch(url);
+    // Filter for Transfer event to 'address' on USDT contract
+    const topicTo = ethers.zeroPadValue(address, 32);
+    const transferTopic =
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"; // Transfer(address,address,uint256)
 
-    if (!response.ok) {
-      throw new Error(`BscScan API error: ${response.statusText}`);
-    }
+    // Get current block
+    const currentBlock = await provider.getBlockNumber();
+    // Look back ~2 hours (2400 blocks at 3s/block) to be safe
+    const fromBlock = currentBlock - 2400;
 
-    const data = await response.json();
+    const logs = await provider.getLogs({
+      address: USDT_CONTRACT,
+      topics: [transferTopic, null, topicTo],
+      fromBlock,
+      toBlock: "latest",
+    });
 
-    // BscScan returns status "1" for success
-    if (data.status !== "1" && data.message !== "No transactions found") {
-      // specific handling for "No transactions found" which might come with status 0
-      if (data.message === "No transactions found") return [];
-      console.warn("BscScan message:", data.message);
-      return [];
-    }
+    // Map logs to BscScanTransaction format
+    const transactions: BscScanTransaction[] = await Promise.all(
+      logs.map(async (log) => {
+        const block = await provider.getBlock(log.blockNumber);
 
-    return data.result || [];
+        // Decode amount (value)
+        const amount = BigInt(log.data).toString();
+
+        // Extract 'from' address from topic[1] (if present)
+        let fromAddress = "0x";
+        if (log.topics && log.topics[1]) {
+          fromAddress = ethers.stripZerosLeft(log.topics[1]);
+        }
+
+        return {
+          hash: log.transactionHash,
+          from: fromAddress,
+          to: address,
+          value: amount,
+          timeStamp: block
+            ? block.timestamp.toString()
+            : Math.floor(Date.now() / 1000).toString(),
+          tokenSymbol: "USDT",
+          tokenDecimal: "18",
+          contractAddress: USDT_CONTRACT,
+          confirmations: (currentBlock - log.blockNumber).toString(),
+        };
+      }),
+    );
+
+    // Sort valid transactions descending by timestamp
+    // Filter out nulls if any block fetch failed (unlikely)
+    return transactions.sort(
+      (a, b) => parseInt(b.timeStamp) - parseInt(a.timeStamp),
+    );
   } catch (error) {
-    console.error("Error fetching wallet transactions:", error);
+    console.error("Error fetching wallet transactions via RPC:", error);
     return [];
   }
 }
