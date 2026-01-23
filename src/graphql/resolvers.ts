@@ -1182,5 +1182,97 @@ export const resolvers = {
 
       return true;
     },
+
+    // AI Trading Resolvers
+    startAiTrade: async (_: any, { amount, type }: any, context: any) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const balance = await getAvailableBalance(client, user.id);
+      if (balance < amount) throw new Error("Insufficient balance");
+
+      const serviceClient = getServiceClient();
+
+      // 1. Fetch current manual balance
+      const { data: userData } = await serviceClient
+        .from("users")
+        .select("balance")
+        .eq("id", user.id)
+        .single();
+
+      const currentManualBalance = userData?.balance || 0;
+
+      const { error: updateError } = await serviceClient
+        .from("users")
+        .update({ balance: currentManualBalance - amount })
+        .eq("id", user.id);
+
+      if (updateError) throw new Error("Failed to deduct balance");
+
+      // Record Transaction
+      await serviceClient.from("transactions").insert({
+        user_id: user.id,
+        type: "trade_entry",
+        amount: -amount,
+        description: `AI Trade Entry (${type})`,
+      });
+
+      return true;
+    },
+
+    resolveAiTrade: async (
+      _: any,
+      { amount, profit, isWin }: any,
+      context: any,
+    ) => {
+      const client = getClient(context);
+      const user = await getUser(client);
+      if (!user) throw new Error("Unauthorized");
+
+      const serviceClient = getServiceClient();
+
+      if (!isWin) {
+        await serviceClient.from("transactions").insert({
+          user_id: user.id,
+          type: "trade_loss",
+          amount: 0,
+          description: `AI Trade Loss`,
+        });
+        return true;
+      }
+
+      // If Win:
+      // We need to credit: Amount (refund) + Profit.
+      // Total payout = amount + profit.
+      const totalPayout = amount + profit;
+
+      // 1. Fetch current manual balance
+      const { data: userData } = await serviceClient
+        .from("users")
+        .select("balance")
+        .eq("id", user.id)
+        .single();
+
+      const currentManualBalance = userData?.balance || 0;
+
+      // 2. Credit Balance
+      const { error: updateError } = await serviceClient
+        .from("users")
+        .update({ balance: currentManualBalance + totalPayout })
+        .eq("id", user.id);
+
+      if (updateError) throw new Error("Failed to credit winnings");
+
+      // 3. Record Transaction
+      await serviceClient.from("transactions").insert({
+        user_id: user.id,
+        type: "trade_win",
+        amount: totalPayout,
+        description: `AI Trade Win (Profit: $${profit.toFixed(2)})`,
+      });
+
+      return true;
+    },
   },
 };

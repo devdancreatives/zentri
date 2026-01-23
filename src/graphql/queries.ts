@@ -490,3 +490,15 @@ export const ADMIN_UPDATE_USER = gql`
     }
   }
 `;
+
+export const START_AI_TRADE = gql`
+  mutation StartAiTrade($amount: Float!, $type: String!) {
+    startAiTrade(amount: $amount, type: $type)
+  }
+`;
+
+export const RESOLVE_AI_TRADE = gql`
+  mutation ResolveAiTrade($amount: Float!, $profit: Float!, $isWin: Boolean!) {
+    resolveAiTrade(amount: $amount, profit: $profit, isWin: $isWin)
+  }
+`;

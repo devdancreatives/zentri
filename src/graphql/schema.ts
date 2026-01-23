@@ -178,5 +178,9 @@ export const typeDefs = `
     # Push Notifications
     savePushSubscription(endpoint: String!, authKey: String!, p256dhKey: String!): Boolean
     testPushNotification(delay: Int): Boolean
+    
+    # AI Trading
+    startAiTrade(amount: Float!, type: String!): Boolean
+    resolveAiTrade(amount: Float!, profit: Float!, isWin: Boolean!): Boolean
   }
 `;

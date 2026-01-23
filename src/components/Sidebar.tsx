@@ -23,6 +23,7 @@ const baseNavItems = [
     { name: 'Investments', href: '/dashboard/investments', icon: History },
     { name: 'Referrals', href: '/dashboard/referrals', icon: Users },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
+    { name: 'AI Trading', href: '/dashboard/ai-trading', icon: TrendingUp }, // Added AI Trading
     { name: 'Chat', href: '/dashboard/chat', icon: MessageSquare }, // Added Chat
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
