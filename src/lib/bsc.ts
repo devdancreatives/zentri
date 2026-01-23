@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-const BSCSCAN_API_URL = "https://api.bscscan.com/api";
+const BSCSCAN_API_URL = "https://api.etherscan.io/v2/api";
 const USDT_CONTRACT = "0x55d398326f99059fF775485246999027B3197955"; // BSC-USD
 const MIN_CONFIRMATIONS = 15;
 
@@ -40,7 +40,7 @@ export async function getWalletTransactions(
     const apiKeyParam = process.env.BSCSCAN_API_KEY
       ? `&apikey=${process.env.BSCSCAN_API_KEY}`
       : "";
-    const url = `${BSCSCAN_API_URL}?module=account&action=tokentx&address=${address}&page=1&offset=${limit}&sort=desc${apiKeyParam}`;
+    const url = `${BSCSCAN_API_URL}?chainid=56&module=account&action=tokentx&address=${address}&page=1&offset=${limit}&sort=desc${apiKeyParam}`;
 
     const response = await fetch(url);
 
