@@ -41,6 +41,9 @@ export const typeDefs = `
     endDate: DateTime!
     status: String!
     user: User
+    createdAt: DateTime
+    profitPercent: Float # Calculated on the fly
+    expectedProfit: Float # Calculated on the fly
   }
 
   type ROISnapshot {
@@ -181,6 +184,10 @@ export const typeDefs = `
     savePushSubscription(endpoint: String!, authKey: String!, p256dhKey: String!): Boolean
     testPushNotification(delay: Int): Boolean
     
+
+    # Investment Management
+    processMatureInvestments: String # Returns summary message
+
     # AI Trading
     startAiTrade(amount: Float!, type: String!): String # Returns 'WIN' or 'LOSS'
     resolveAiTrade(amount: Float!, profit: Float!, isWin: Boolean!): Boolean
@@ -196,6 +203,7 @@ export const typeDefs = `
   type AdminInvestmentStats {
     totalActiveCapital: Float!
     totalProjectedPayout: Float!
+    totalEstimatedProfit: Float!
     activeCount: Int!
   }
 `;

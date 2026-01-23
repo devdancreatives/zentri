@@ -477,11 +477,41 @@ export const resolvers = {
 
       const serviceClient = getServiceClient();
 
-      const { data } = await serviceClient
+      // Fetch Investments
+      const { data: investments } = await serviceClient
         .from("investments")
         .select("*, user:user_id(email, full_name)")
         .order("created_at", { ascending: false });
-      return data;
+
+      // Fetch ALL ROI snapshots to calculate historical profit
+      // Optimization: In prod, maybe limit by date or cache current ROI index.
+      const { data: snapshots } = await serviceClient
+        .from("roi_snapshots")
+        .select("created_at, roi_percentage")
+        .order("created_at", { ascending: true });
+
+      // Map investments with calculated stats
+      return investments?.map((inv: any) => {
+        // Find all snapshots that happened AFTER this investment started
+        // and BEFORE this investment ended (if it ended? No, if active or completed)
+        // For active, it's just start_date to now.
+        const relevantSnapshots =
+          snapshots?.filter(
+            (s: any) => new Date(s.created_at) >= new Date(inv.start_date),
+          ) || [];
+
+        const totalRoiPercent = relevantSnapshots.reduce(
+          (acc: number, s: any) => acc + s.roi_percentage,
+          0,
+        );
+        const expectedProfit = inv.amount * (totalRoiPercent / 100);
+
+        return {
+          ...inv,
+          profitPercent: totalRoiPercent,
+          expectedProfit: expectedProfit,
+        };
+      });
     },
 
     adminAiStats: async (_: any, __: any, context: any) => {
@@ -551,20 +581,50 @@ export const resolvers = {
           activeCount: 0,
         };
 
-      const totalActiveCapital = investments.reduce(
-        (sum: number, inv: any) => sum + inv.amount,
-        0,
-      );
-      const totalProjectedPayout = totalActiveCapital; // Assuming principal liability for now
+      // Fetch ALL ROI snapshots to calculate historical profit for totals
+      const { data: snapshots } = await serviceClient
+        .from("roi_snapshots")
+        .select("created_at, roi_percentage")
+        .order("created_at", { ascending: true });
+
+      let calculatedProfit = 0;
+      if (investments && snapshots) {
+        for (const inv of investments) {
+          const relevantSnapshots = snapshots.filter(
+            (s: any) => new Date(s.created_at) >= new Date(inv.start_date),
+          );
+          const totalRoiPercent = relevantSnapshots.reduce(
+            (acc: number, s: any) => acc + s.roi_percentage,
+            0,
+          );
+          calculatedProfit += inv.amount * (totalRoiPercent / 100);
+        }
+      }
+
+      const totalActiveCapital =
+        investments?.reduce((sum: number, inv: any) => sum + inv.amount, 0) ||
+        0;
+
+      const totalEstimatedProfit = calculatedProfit;
+      const totalProjectedPayout = totalActiveCapital + totalEstimatedProfit;
 
       return {
         totalActiveCapital,
         totalProjectedPayout,
-        activeCount: investments.length,
+        totalEstimatedProfit,
+        activeCount: investments?.length || 0,
       };
     },
 
     // End of New Admin Resolvers
+  },
+  Investment: {
+    startDate: (parent: any) => parent.start_date,
+    endDate: (parent: any) => parent.end_date,
+    durationMonths: (parent: any) => parent.duration_months,
+    createdAt: (parent: any) => parent.created_at,
+    profitPercent: (parent: any) => parent.profitPercent || 0,
+    expectedProfit: (parent: any) => parent.expectedProfit || 0,
   },
   Chat: {
     userId: (parent: any) => parent.user_id,
@@ -637,12 +697,7 @@ export const resolvers = {
     confirmedAt: (parent: any) => parent.confirmed_at,
     user: (parent: any) => parent.user,
   },
-  Investment: {
-    durationMonths: (parent: any) => parent.duration_months,
-    startDate: (parent: any) => parent.start_date,
-    endDate: (parent: any) => parent.end_date,
-    user: (parent: any) => parent.user,
-  },
+
   Transaction: {
     createdAt: (parent: any) => parent.created_at,
   },
@@ -1333,9 +1388,16 @@ export const resolvers = {
       // Random Chance (20% Win Rate)
       let isWin = Math.random() < 0.2;
 
-      // SAFETY OVERRIDE
-      // If paying out would make the house pool negative (or dangerously low), force LOSS.
-      if (isWin && housePool - potentialPayout < 0) {
+      // SAFETY OVERRIDE (Strict Mode)
+      // 1. "Recovery Mode": If House Pool is negative, FORCE LOSS (0% chance).
+      if (housePool < 0) {
+        console.log(
+          `[AI TRADING] STRICT SAFETY MODE. Pool Negative (${housePool}). Forcing LOSS to recover.`,
+        );
+        isWin = false;
+      }
+      // 2. "Predictive Safety": If paying out would dip pool below zero, FORCE LOSS.
+      else if (isWin && housePool - potentialPayout < 0) {
         console.log(
           `[AI TRADING] Safety Override Triggered. Pool: ${housePool}, Payout: ${potentialPayout}. Forcing LOSS.`,
         );
